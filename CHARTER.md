@@ -1,0 +1,543 @@
+# WeighTags — Project Charter
+
+*Draft v11*
+
+## Vision
+
+Eliminate the manual friction in reconciling weigh tags between commodity growers and buyers. Replace the email-and-Excel workflow with a shared system that auto-pairs tags on BOL, surfaces discrepancies in a single diff view, resolves disputes on a deterministic clock, and serves as a queryable system of record for each party going forward.
+
+## Problem
+
+Growers and buyers both weigh truckloads independently — for legitimate reasons (scale calibration trust, in-transit shrinkage, separate books). Reconciling the two sets of tags currently costs hours of bookkeeper time per week, generates ambiguous email trails, and creates billing disputes that are hard to settle without a paper record.
+
+## Strategic wedge
+
+Single-sided adoption via default-accept timeout. A grower can post tags addressed to a buyer's email; the system creates a placeholder org and invites the buyer. If the buyer engages, both parties see the same diff in real time. If they don't, after N days the tags are considered accepted in our system.
+
+Converts an active-coordination problem ("get the buyer to sign up") into a passive-action problem ("engage or you've accepted").
+
+## Positioning principle
+
+WeighTags is a **multiplayer** product: a neutral medium where two parties coordinate, each with equal agency, equal data ownership, and equal visibility. The platform is the meeting point, not the master. It is not a party to the underlying commercial agreements, not a legal arbiter, and does not enforce contracts.
+
+This is structurally different from how the rest of the category works:
+
+- **The master pattern.** One party owns the platform; the counterparty is a guest in their portal. Bushel is the prototype — the grain company owns the system, the grower logs in as a guest. Most B2B SaaS works this way; CRMs, customer portals, and AR/AP tools all assume one operator and one or more guests.
+- **The integrator pattern.** The platform wires two existing systems together via API. Scale software, ERP middleware, and trading APIs are all integrators. The two parties remain in their own tools; the platform is plumbing between them.
+- **The multiplayer pattern (ours).** Both parties have their own org, their own login, their own data — and a shared canonical record that neither solely owns. The platform is *neither* a master nor a pipe; it is the room they meet in.
+
+The audit log we keep — timestamps, view records, notification history, value changes — is a defensible third-party record the parties can use in their own dispute resolution, like an email server's logs in a discovery process. The platform makes communication and audit easier; the parties remain responsible for their commercial relationship.
+
+Every design decision either reinforces multiplayer (sender-left/receiver-right consistent regardless of who's logged in; symmetric actions; org-owned data on both sides; both parties cited in the audit log) or weakens it. When in doubt, default to symmetric.
+
+## Market paths and pillars of success
+
+### Operating posture
+
+WeighTags is launched cheaply and listens for signal. We are not picking a vertical, picking a geography, or running a GTM motion upfront. The bet is that *if* there's a real workflow pain at small/mid operator scale, the product will surface it; *if* there isn't, we'll know early and at low cost.
+
+Concretely: minimum viable infrastructure on Fly, public beta visible to anyone with a link, one or two warm seeds to bootstrap the wedge, and continuous observation of what real usage looks like. No paid acquisition, no sales motion, no commitment to a vertical until signal points at one.
+
+This posture is deliberate, not lazy. It minimizes cost-of-discovery for a market we don't yet understand, and it protects against premature commitment to a path that wouldn't pay.
+
+### Who we're for
+
+Small-to-mid operators on both sides — the mom-and-pop, the per-relationship, the parties for whom a $20/month subscription is a reasonable line item and a 5-day onboarding is unacceptable. Not enterprises with procurement processes; not large coops with internal IT; not consolidators who would rather build their own master platform than join someone else's. The customers Bushel and the master-platform vendors implicitly leave on email-and-Excel.
+
+### What "signal" means
+
+The things we'd actually act on:
+
+- An inviter posts tags week-over-week (the wedge is working)
+- An invited partner engages — logs in, reviews, acts (not just lets auto-accept fire)
+- An invitee invites their own counterparties on a different relationship (the network is propagating)
+- Concentrated usage from one vertical or geography (a wedge with a center)
+- Specific feature requests that recur across customers (the next investment is obvious)
+- A paid customer refers another paying customer (organic word-of-mouth, the cheapest channel of all)
+
+### Branches we'd take if signals appear
+
+- **Winery signal** → invest in crush.wine integration. Zero CAC; your existing customer base on one side; the v2 API is the natural extension.
+- **Almond signal** → warm intros through AgTracker / Rava network. Real domain depth available if it's worth investing.
+- **Grain cross-network signal** → defensible niche. Bushel only reconciles between Bushel-powered partners; the other ~60% of US grain origination plus all cross-network trades is still on email-and-Excel.
+- **Diffuse signal across verticals** → stay vertical-agnostic; double down on the generic multiplayer product.
+- **No signal after a fair shot** → kill without ego. The cost of discovery was low, the work built real engineering and product muscle, move on.
+
+### Competitive landscape
+
+- **Bushel** owns enterprise grain. Their reach is real: 40% of US grain origination by volume, $60B in grain settled annually, 60,000 growers, 2,000 grain buying locations, SOC 2 Type II audited. Their reconciliation product (*Bushel Fulfillment / Commercial Portal*) works *only between Bushel-powered partners* — it does not solve cross-network. Their pricing is asymmetric (enterprise on the elevator side; $199–$599/year acquisition pricing on the grower side). They're not in specialty crops at all.
+- **Vertical Software, AgriChain, CompuWeigh, scale-software vendors** are scale-house operator software — different problem. They digitize one party's operations; they do not reconcile between parties.
+- **The structural gap.** Every competitor is either a *master* or an *integrator* (see *Positioning principle*). No one is genuinely *multiplayer*. That's the niche, and it's structural, not feature-level. It cannot be closed by an incumbent adding a feature; it would require them to give up the platform-of-record posture that justifies their pricing.
+
+### Pillars of success beyond technical merit
+
+- **Multiplayer-first.** Both parties have equal agency, equal data ownership, equal visibility. Sender-left/receiver-right consistent regardless of who's logged in. Symmetric default for every product decision. This is the single biggest differentiation against the competitive set; if we lose it, we become a worse master platform.
+- **Ingest excellence.** It's in the name. CSV (v0), refined manual entry (v1), production public API (v2) — all rock solid. Without this, nothing else matters.
+- **Audit defensibility.** The log is, to a real degree, the product. It has to hold up in a real commercial dispute. Append-only at the database level; attribution durable across job changes and org migrations.
+- **Low-friction wedge.** Default-accept timeout plus free partner means invitee adoption cost is near zero. If invitee friction creeps up, the wedge stops pulling and the whole acquisition model breaks.
+- **Mom-and-pop fit.** Pricing, UX, onboarding, and operational model designed for small-mid operators on both sides. Resist every feature request that pulls toward enterprise scope.
+- **Scope discipline.** We do one thing well. Each adjacent temptation — CRM-lite, accounting-lite, market-data, weather — is either a partner integration or a no, never an internal feature.
+- **Domain credibility (latent).** AgTracker and crush.wine experience is available if vertical signal appears. Not deployed upfront; held in reserve.
+
+### Estimates
+
+At $20/month flat per company, partner free, this is the shape of the business:
+
+| Paying customers | ARR | What it means |
+|---|---|---|
+| 50 | $12K | Wedge is pulling. The thesis works at small scale. |
+| 100 | $24K | Meaningful early traction. |
+| 250 | $60K | Sustainable side income. |
+| 500 | $120K | **Huge success.** Real network underneath. |
+| 1,000+ | $240K+ | Upside beyond expectation; decide whether to invest more deliberately. |
+
+500 paying customers is the success anchor. Infrastructure cost is pennies at that scale, so $120K ARR is essentially $120K of revenue with negligible variable cost — a real income stream from a side project launched on minimal capital. This is the right shape for the bet: small numbers, real network, sustainable indefinitely.
+
+Worth noting the network footprint, not just the dollar number: 500 paying customers × 2–3 invited partners each = 1,000–1,500 free users on top, so the active-account count is more like 1,500–2,000. The dollar number is modest; the network depth is substantial.
+
+Two consequences fall out of this pricing shape:
+
+- **CAC has to be near zero.** A $200 CAC implies 10-month payback at $20/month. The wedge has to do the acquisition work; we cannot afford a sales motion at this price, and we don't want one.
+- **Margins should be fat.** Phoenix on Fly is cheap, Postgres is cheap, email is cheap. 85–90% gross margin at scale is realistic. The constraint is customer count, not unit economics.
+
+These numbers are oriented as a sense of *what success looks like at this posture*, not a forecast. We're not aiming for $1M ARR; we're aiming for a sustainable, narrow, multiplayer product that earns its own keep.
+
+### Feedback mechanisms
+
+- **Repeat-usage measurement.** Week-2 and month-2 retention on both inviter and invitee sides.
+- **Invite-to-engagement rate.** How many invited partners actually log in vs. let auto-accept fire. The wedge's pulse.
+- **Time-to-first-reconciled-load.** From first tag posted to first closed load. A measure of friction.
+- **Disputed-tag retrospectives.** What happened, what would have made it faster, what the customer wishes the product knew. Both for our product backlog and for customer workflow insight.
+- **Vertical and geographic pattern detection in inbound usage.** Are we seeing concentration? Where?
+- **Quarterly customer conversations** once volume supports it. Earlier than that, opportunistic interviews with anyone who'll talk.
+- **Kill-criteria review** at fixed intervals (every 3 months in year 1).
+
+### Kill criteria
+
+Conditions under which we stop investing rather than double down:
+
+- 6 months post-public-launch, zero repeat customers
+- 3 months post-paid-launch with paying customers, no organic invites propagating (the wedge isn't pulling)
+- After a fair trial, the trajectory isn't pointing toward at least 50 paying customers — the wedge isn't doing the acquisition work that the price point requires
+- A clearly superior incumbent emerges in our target segment and we cannot differentiate against them
+- Operating cost exceeds revenue with no plausible path to closing the gap within 12 months
+- The work stops being interesting — sustainability matters; this is a long-running asset by design, and a project that drains the operator is one that doesn't get the maintenance investment described in *The app is the business*
+
+The bar is low by design. We're not optimizing for big numbers; we're checking whether the slope is positive at small numbers. If the trajectory's right, 50 becomes 100 becomes 250 over time without forcing anything. If the trajectory's flat at small numbers, no amount of investment fixes the underlying market signal.
+
+## Goals (MVP)
+
+- Reduce manual ticket-pairing to near zero (auto-match on BOL, smart pairing for typos)
+- Single source of truth per load, visible to both parties in real time
+- Auditable record of every state transition (post, view, dispute, accept, edit, compromise, auto-accept, invoiced)
+- One party can adopt without the counterparty pre-existing
+- Serve as a queryable system of record for each party's weigh tag history — value persists past the live coordination event
+- Track the bridge from reconciled weigh tags to external invoices, so the workflow loop closes cleanly even without the platform generating the invoice
+- Organizational continuity — an org's history and partner relationships outlive any one user's tenure at that org
+
+## Non-goals (MVP)
+
+- Not a scale-software replacement — we ingest, not generate
+- Not an invoicing engine in the generative sense — we track *which* tags went to *which* external invoice, not the invoice's pricing or total
+- Not a payment processor
+- Not a legal arbiter or contract enforcer
+- Not commodity-specific logic — generic tag schema with optional fields
+- Not mobile-first — responsive web, optimized for desktop
+- Not a farm management platform, CRM, accounting system, or ERP — we do one thing (reconcile weigh tags between two parties) and resist the gravitational pull toward platform sprawl
+- Not blind / sealed-bid submission — analytics surfaces patterns more powerfully than restriction does
+
+## Users
+
+- Grower / buyer: post tags, review counterparty tags, dispute, accept, propose compromise
+- Bookkeeper / admin: reports, exports, partner / tolerance / user management, invoice batches
+- Demographic skews older, Excel-comfortable, not deeply technical
+
+## User stories
+
+### As a grower / sender (typically posting first)
+
+- Upload my day's weigh tags via CSV, so they're shared with the partner without emailing a spreadsheet.
+- Invite a partner who isn't on the platform yet, so I can adopt the system unilaterally.
+- See which of my tags are awaiting the partner, matched, disputed, or accepted, so I know where attention is needed.
+- Dispute specific values on a matched load, so the discrepancy is documented and we can resolve it.
+- Accept the partner's numbers when I'm willing to concede, so the weigh tag is closed quickly without an edit.
+- Edit my own tag when I've discovered a recording error, with a required reason captured in the audit log.
+- Propose a compromise value when neither side's number is clearly correct, so we can settle quickly without a long back-and-forth.
+- Export reconciled weigh tags to CSV, so my accounting team can invoice from agreed numbers.
+
+### As a buyer / receiver (engaging for the first time via invite)
+
+- Click a link in an email and see the tags posted to me without creating a password first, so I can review before committing to signup.
+- Upload my own tags via CSV, so the system can match them against the sender's.
+- Accept the sender's tags as-is without uploading my own, so I can engage with low friction when the numbers look right.
+- See my numbers and the sender's side by side with deltas, so I can quickly identify discrepancies.
+- Dispute, accept, edit, or propose a compromise — the same actions available to senders, symmetric.
+- Get clear reminders before the dispute window closes, so I don't accidentally let auto-accept fire.
+- Claim my account properly when ready, so all tags previously addressed to me remain accessible.
+
+### As a bookkeeper or admin on either side (workflow)
+
+- Configure the dispute window with a specific partner (e.g., 14 days), so the platform's timeout matches our actual commercial agreement.
+- Configure tolerances per partner (e.g., ±1% net, ±0.2% moisture), so the platform's "within tolerance" flag reflects what we actually treat as acceptable drift.
+- Download the full audit log for a load, so I can attach it to dispute resolution outside the platform.
+
+### As an admin (organizational continuity)
+
+- Invite a colleague at my organization by email, so they can post and review tags on our behalf.
+- Promote a member to admin, so the organization always has a backup admin in case I'm unavailable.
+- Deactivate a departing user's membership, preserving their historical actions in the audit log while removing their access going forward.
+- Verify my organization's domain (DNS TXT record or email-confirmation), so other email holders at the same domain can request admin recovery if needed.
+- See a persistent banner when my org has only one admin, so I'm reminded to add a backup before there's a problem.
+- After claiming a placeholder org via invite, get nudged to invite a colleague, so the organization isn't tied to a single account.
+
+### As a scale operator (direct entry at the scale house)
+
+- Type a weigh tag directly into the platform as the truck pulls off the scale, so it gets to my partner in real time instead of waiting for an end-of-day CSV upload.
+- Have common fields (commodity, partner, sender / receiver, scale ID, my own name) pre-fill from my last entry, so I'm only entering what actually changes per truck.
+- Autocomplete truck numbers and driver names from recent entries, so frequent trucks are one keystroke and a tab.
+- Save a tag and immediately start a new one without leaving the form, so a steady stream of trucks doesn't require steady navigation.
+- Have my partner see the tag immediately after I save it, so they can begin reconciling without waiting on me to finish the day.
+
+### As a user across job changes
+
+- Leave an organization without losing my personal account, so I can be invited into a different org at my next job and pick up where I left off.
+- See which organizations I'm currently a member of and switch between them, so I can work across multiple relationships from one login.
+
+### As a bookkeeper or admin on the sender side (invoice batches)
+
+- Select a batch of closed weigh tags and mark them as invoiced by entering my external invoice number, so the platform tracks the bridge between reconciled tags and the invoice I'm sending.
+- Filter weigh tags by *Closed, not yet invoiced*, so my regular bookkeeping workflow has a clear queue of pending items each week.
+- Download a printable PDF summary of an invoice batch (header, invoice number, included weigh tags, totals, verification URL), so I can attach it as backup to the invoice email I send my partner.
+
+### As a bookkeeper or admin on the receiver side (invoice verification)
+
+- Search weigh tags by invoice number, so when I receive an invoice from a partner I can quickly confirm the line items match the platform's reconciled values.
+- See an *Invoiced* badge on weigh tags that have been linked to a partner's invoice, so I know which tags are accounted for in their billing cycle.
+
+### As any user, using weightags as a system of record
+
+- Search and filter my weigh tags by BOL, date, partner, truck, driver, or status, so I can find specific records on demand without digging through old emails or spreadsheets.
+- Export a filtered view of weigh tags to CSV, so I can hand data to my accountant, import into bookkeeping software (QuickBooks, Business Central, etc.), or attach to a regulatory filing.
+- See aggregate totals (count, gross, tare, net) for any filtered range, so I can answer *"how many pounds did we ship in October?"* or *"what's our total receiving for this harvest?"* without manually summing.
+- Pull a season-long activity record with a specific partner, so I can review the relationship at year-end or prepare for contract renewal.
+- Download a comprehensive ledger of closed loads with their audit trails, so I have defensible documentation for tax filings, crop insurance claims, organic certification, or USDA program audits.
+
+### As either party, on any load
+
+- See a complete history of who did what when, so the audit trail is available if a commercial dispute escalates.
+- Add notes or comments to a load, so context travels with the data without a separate email thread.
+- Receive email notifications when relevant events occur (new tags posted to me, clock started, dispute filed, auto-accept fired, partner edited their tag, tags marked invoiced), so I don't need to keep the app open.
+
+## Site aesthetic
+
+Clean, clerical, friendly, hygienic. A vault for the parties' data and a neutral exchange between them — trustworthy but welcoming, neither a toy that misplaces things nor a courtroom that punishes mistakes. Closer to a well-run accountant's office or a good credit union than to a modern SaaS dashboard or a stern legal docket.
+
+### Design principles
+
+- **Vault, not toy.** Stable record IDs visible, explicit timestamps with timezone, immutable audit trails surfaced. No animations that suggest data could be moved or undone casually.
+- **Friendly and easy, not bureaucratic.** Plain-language copy, helpful empty states, encouraging confirmations. Sensible defaults so users aren't forced into every decision. Competent but warm.
+- **Neutral ground.** Symmetric visual treatment of both parties. Sender always on the left, receiver always on the right — across all views, for all users, regardless of who's logged in. Goods flow left-to-right; the eye gets a consistent scan pattern.
+- **Clerical precision.** Aligned grids, ruled lines, tabular numerals with consistent precision, conservative palette (warm neutrals plus one or two reserved accents).
+- **Density over whitespace — but readable.** Information on screen, scannable without scrolling or expanding rows, but not packed to the point of strain. Older users especially.
+- **Read-first, edit-deliberate.** Default read-only; editing requires explicit intent, a reason, and an audit entry.
+- **Predictable layout.** Buttons stay put. No clever animations or hide-and-reveal.
+- **Familiar verbs.** "Sort," "Filter," "Export," "Edit," "Accept," "Dispute," "Compromise," "Mark as invoiced."
+- **Print-friendly tables and PDF artifacts.**
+
+### Reference points (in spirit)
+
+Closest fit for friendly-but-clerical: **Mercury** and **Bench Accounting**. Other useful anchors: **Stripe Dashboard**, **Microsoft Dynamics 365 Business Central**, **Carta**, QuickBooks Online tables, well-designed credit union and government interfaces, classic ledger aesthetics.
+
+### Status palette
+
+Color is the primary signal for workflow state. Seven values, organized by what they ask of the viewer's attention:
+
+| Register | States | Hex | What it says |
+|---|---|---|---|
+| Personal / private | Draft | `#8b7d6b` (warm gray-brown) | Your own incomplete work, not yet shared |
+| Active workflow (amber family) | Pending | `#d97706` (amber-orange) | Waiting on the partner; no action from you yet |
+|  | Review | `#b45309` (darker amber) | Deltas above tolerance; your action required |
+| Conflict | Disputed | `#dc2626` (red) | Active dispute filed |
+| Resolved / clean | Matched | `#059669` (green) | Both posted; deltas within tolerance |
+|  | Resolved | `#0891b2` (cyan) | Was disputed, now closed |
+|  | Invoiced | `#4f46e5` (indigo) | Closed weigh tag linked to an external invoice batch |
+
+Two design rules follow from the registers:
+
+- **Amber is reserved for "this needs attention."** The two amber shades (Pending and Review) sit in the same family but at different luminances. Pending is brighter; Review is darker. They're never visually adjacent on a page — Pending lives at the row level and Review at the row level, and in the summary cards they're separated by another card.
+- **Red is reserved for active conflict.** A delta exceeding tolerance is amber (a fact about the numbers), not red. Red only ever describes the workflow state, not the data. This means a single Load can carry both colors — amber delta cell, red status pill — without contradiction, because they describe different things.
+
+### What to avoid — both failure modes
+
+**Toy.** Card-based dashboards as primary navigation; heavy whitespace and oversized typography; hidden actions behind hover; animation-heavy transitions and skeleton loaders; marketing copy inside the app; emoji-heavy status indicators; gamification; cartoon illustrations; "Oops!"-style error voice; visual treatments favoring one party.
+
+**Bureaucratic.** Legalese; cold pure-white backgrounds; terse or hostile error messages; dense walls of jargon; defaults that punish users for not knowing how the system works.
+
+### Concretely
+
+Tables as primary display, subtle row striping, warm-neutral background. Compact but readable forms. Modals only for consequential confirmations. Side-by-side diff with delta column — sender-left, delta-center, receiver-right. Status pills with distinct color per state. Persistent record IDs and timestamps. Activity feed reachable from any load. Plain-language copy. Helpful empty-state guidance. Sensible defaults wherever possible. Printable PDF artifacts for invoice batch summaries and audit log exports.
+
+## Canonical screens
+
+A working React + Vite + Tailwind v4 prototype implements the design language described above. The artifact lives at `WeighTagsFigma-v3.zip`, exported from a Figma Make session and then iterated on directly in code. The four screens below are the ones in implementation today. Each is captioned with the state it shows and the design decisions visible in it; together they exercise the full status palette and the core diff pattern.
+
+Figma frame links are placeholders — to be filled in once the canonical frames are pulled back into the Figma file.
+
+### Weigh tags list — receiver org's home view
+
+![Weigh tags list](mockups/01-list.png)
+
+Logged in as Jessica Miller at Heartland Grain Co. Seven mock weigh tags across the full state spectrum (Matched, Review, Pending Receiver, Resolved, Invoiced, Disputed). Figma frame: *[to add]*
+
+Design decisions visible:
+
+- **Four summary cards across the top, color-keyed:** Pending Receiver (neutral), Needs review (amber `#b45309`), Disputed (red `#dc2626`), Matched Today (green `#059669`). The eye scans left to right through escalation registers. *Disputed* and *Needs review* are visually adjacent but distinguishable; both are not red because that would collapse the two-register distinction described in the data model.
+- **Table as primary surface, not cards.** Dense, scannable, with tabular numerals throughout. One row per Load. Eleven columns fit the viewport without horizontal scroll at 1400px.
+- **Sender on the left of Receiver on the right** (Sender Net column then Receiver Net column then Δ). Goods-flow direction is enforced even when the viewer is a receiver.
+- **Δ column color-coded.** When the magnitude exceeds the 0.5% tolerance, it renders amber (review register). Within tolerance, it's the default text color (no semantic weight; the reader's eye doesn't catch on it).
+- **Status pill is the rightmost column** so the workflow state is the last thing the eye lands on per row.
+- **One-sided weigh tags show `—` in the missing party's Net and Δ columns.** No empty cells, no zeros — explicit absence.
+- **Footer carries chrome only:** copyright, the *System of Record for Commodity Weight Reconciliation* tagline, timezone, last-sync timestamp. Reinforces the vault feel without competing for attention.
+
+### Weigh tag detail — clean match (`WT-2026-0527-001`)
+
+![Matched detail](mockups/02-detail-matched.png)
+
+Both parties' tags joined, deltas within tolerance, status auto-matched. Figma frame: *[to add]*
+
+Design decisions visible:
+
+- **General Information panel above the diff.** Fields that apply to the Load as a whole (BOL, Ship Date, Truck, Driver, Commodity, Sender, Receiver) are factored out. The comparison table holds only what differs between the two sides.
+- **Comparison table is symmetric.** Field labels left; sender column; centered Δ column on a slightly darker stripe; receiver column. Green checkmark next to *Sender* and *Receiver* headers when that side has posted (an X when missing).
+- **Delta cell shows both absolute and percentage.** `−30` over `(−0.06%)`. Color follows tolerance: green when within, amber when exceeding. The same component renders both registers — only the threshold changes the color.
+- **Per-side fields beyond the weights.** Moisture, Timestamp, Weighed By, Scale ID, Notes. These are the audit trail visible at a glance: who weighed it, on which scale, when, with what observation. Each side carries its own. Sender notes might be empty while receiver notes carry a real observation; the layout handles asymmetry gracefully.
+- **Variance Status footer below the table.** A single one-line callout: *Within tolerance (±0.5%)* in green, or *Exceeds tolerance (±0.5%)* in amber. Tells the reader the headline conclusion without scanning the cells.
+- **Activity Log as a table at the bottom.** Timestamp, Action, Details, Actor. The same striped, tabular treatment as the comparison table — audit feels like a continuation of the data, not a separate thing.
+
+### Weigh tag detail — review needed (`WT-2026-0527-002`, Soybeans, −0.74% net)
+
+![Review detail](mockups/03-detail-review.png)
+
+Both parties posted; net delta −0.74% exceeds the 0.5% tolerance; awaiting human action. Figma frame: *[to add]*
+
+Design decisions visible:
+
+- **Amber *Review* pill** in the header. Distinct from Pending (also amber-orange, `#d97706`) by being a slightly darker amber (`#b45309`). The two are never adjacent on a page — Pending lives in summary card 1, Review in summary card 2.
+- **Action ribbon expands** with *Accept* (outlined) and *Dispute* (filled black). Only appears on Review state — the matched detail has no actions to take.
+- **Review-needed alert** between the General Information panel and the comparison table. Amber `#b45309` background tint and border. Pulls the reviewer's eye to the reason (*"Net weight variance exceeds 0.5% threshold"*) before they scan the numbers.
+- **Per-side Notes show context the headline numbers lose.** Receiver: *"Some spillage observed during unload."* The reviewer now has a hypothesis for the variance before clicking anything.
+- **Activity Log includes the system action.** *Flagged for review — Net weight variance 0.74% exceeds threshold — requires review.* The auto-flagging is itself an audit event.
+
+### Weigh tag detail — disputed (`WT-2026-0527-004`, Milo, −2.11%)
+
+![Disputed detail](mockups/04-detail-disputed.png)
+
+A formal dispute filed; receiver's scale recalibrated that morning; sender requests third-party verification. Figma frame: *[to add]*
+
+Design decisions visible:
+
+- **Red *Disputed* pill** (`#dc2626`). This is the alarm register, reserved for active conflict — not used anywhere else.
+- **Dispute-filed alert in red.** Carries the structured reason (*Significant weight variance — 2.1%*) and the free-text dispute notes (*Sender disputes receiver measurement — requesting third-party verification*) as a stronger-weight second line. The two-layer treatment makes the categorical fact (what bucket of dispute) skimmable while keeping the specific complaint legible.
+- **Delta cell is amber, not red.** This is the key two-color decision: amber describes the numbers (*these deltas exceed tolerance*), red describes the workflow state (*this load is in formal dispute*). The same load can carry both colors because they're about different things. Future-proofs against the case where a load is disputed but the dispute is about *something other than* a weight variance.
+- **Per-side Notes carry the dispute context inline.** Sender: *"Scale certified 05/15/2026."* Receiver: *"Scale recalibrated this morning — readings verified."* Both sides' provenance for trusting their own number is visible at a glance.
+- **Activity Log entry attributes the dispute** to Rachel Green at Redstone Farms (the sender). Org attribution is parenthetical after the actor name — supports the *role is not embedded in audit log* rule by keeping org context queryable but not authoritative.
+
+### Still to design
+
+Canonical screens not yet drafted, in roughly the order they're needed:
+
+- Landing / marketing page
+- Empty-state home for a brand-new sender (no weigh tags yet)
+- CSV upload preview (column mapping, per-row validation, summary before commit)
+- Invite-partner email (template + claim link)
+- Invitee first-arrival view (placeholder Org claim flow, no password yet)
+- Direct entry form for a scale operator (scale-house tablet use case)
+- Invoice batch creation (multi-select closed tags, invoice number entry, PDF preview)
+- Invoice batch PDF summary (printable artifact attached to invoice email)
+- Settings: per-partner tolerances and dispute window
+- Members and roles (org admin view)
+- Partner list and per-partner detail (relationship-level view)
+- Full audit log / activity feed (cross-load, filterable)
+- Compromise proposal flow (the midpoint-or-other negotiated-value action)
+- Edit-own-tag flow (with required reason field, pre-commit confirmation)
+
+## Data model
+
+The model separates *who acts* from *what persists*. Five distinct entities, each with its own lifecycle.
+
+### User
+
+A person with an account, identified by email. Persists across job changes — leaving an organization doesn't delete the user account. A user can be a member of zero, one, or many organizations over their lifetime.
+
+### Org
+
+A persistent business entity (Sycamore Ridge Farms, Pacific Hulling Co.). Holds weigh tag history, partner relationships, settings, tolerances, dispute windows, and invoice batches. Has its own name, optionally a verified domain, optionally a tax ID. An org outlives any single user's tenure.
+
+### Membership
+
+Links a User to an Org with a role (admin, member) and a time range (joined date; optional end date if the user has departed). Audit attribution references the user directly; role is *not* embedded in audit entries — it lives here, queryable when needed, but historical events stand on their own.
+
+### Tag
+
+What each scale recorded. Each tag belongs to one Org and carries that party's measurements (gross, tare, net, moisture, grade), the metadata identifying the load (BOL, date, truck, driver, partner), and provenance for trusting that specific recording: who weighed it (`weighed_by`), which scale was used (`scale_id`), when the weighing occurred (`weighed_at` timestamp, distinct from the load-level ship date), and free-text notes from the operator (e.g., *"spillage observed during unload"* or *"scale recalibrated this morning"*). Tags are facts; immutable except through a deliberate edit action, which preserves the prior values in the audit log.
+
+The provenance fields are not optional in spirit — they are the foundation of the audit trail. A disagreement that surfaces months later is resolved by reading them: which operator, which scale, what context. The UI presents them per-side in the comparison table so both sides' provenance is legible at a glance.
+
+### Load
+
+The canonical, agreed-upon record for a single physical truckload. A Load joins one or two Tags (one from each side, when both have posted) and carries the agreed values that downstream consumers use.
+
+- In a clean match, Load canonical values equal both tags (because they agree).
+- In acceptance, Load canonical values equal whichever tag was accepted.
+- In compromise, Load canonical values are a negotiated value that may match neither tag.
+- In auto-accept (timeout), Load canonical values default to the sender's tag.
+
+Both tags are preserved exactly as recorded. The Load records the agreement; the tags record the measurement. User-facing language is "weigh tag" — Load is internal terminology.
+
+### Invoice batch
+
+A grouping of closed weigh tags marked as invoiced under a single external invoice number. Carries: external invoice number, invoice date, sender org, recipient org, optional notes, list of tag IDs (each closed tag belongs to at most one batch), creator (which user marked it), creation timestamp, optional PDF artifact. The platform does not generate the invoice or know its monetary total — only the bridge between the reconciled tags and the external invoice.
+
+### Load states
+
+| State | Meaning |
+|---|---|
+| **Left-only / Right-only** | One party has posted; partner hasn't. Dispute clock hasn't started. |
+| **Double-sided · ready to close** | Both posted; tags match (or within tolerance). One-click acceptance. |
+| **Double-sided · review** | Both posted; deltas above tolerance. Needs action. |
+| **Disputed** | One party has filed a structured dispute. Clock paused; partner must respond. |
+| **Compromise proposed** | A negotiated value has been proposed; awaiting partner acceptance. |
+| **Re-review** | One party has edited their tag after partner saw it; partner reviews again. |
+| **Closed** | Resolved by acceptance (manual or auto), compromise, or matched values. Carries the resolution provenance. |
+| **Closed · invoiced** | A closed weigh tag linked to an invoice batch. Filterable separately from *closed, not yet invoiced*. |
+
+### Audit log
+
+Append-only. Each entry references the actor (user) and the action (with relevant context), timestamped. Role is *not* embedded — entries say *"Mary Lin disputed BOL 10849"* not *"Mary Lin (admin at Pacific Hulling) disputed BOL 10849."* Membership/role context, if ever needed, is reconstructable from the membership data at the time. Historical facts stay true: a user's past actions remain attributed to them even after they leave their org.
+
+## Key workflows
+
+1. Tag submission via CSV in defined schema, or direct entry through a scale-house form with autocomplete pre-fill from recent entries and save-and-add-another for steady-stream operators (manual single-entry as fallback for either path)
+2. Auto-pair on BOL into a shared Load
+3. Smart pairing for fuzzy BOL matches (Levenshtein + date/truck/weight corroboration), with mutual confirmation by both parties
+4. Shared diff view on Load detail (sender-left / receiver-right) with a centered delta column showing both absolute and percentage variance, a *Variance Status* callout below the comparison table (*Within tolerance* in green or *Exceeds tolerance* in amber, with the configured threshold), and an Activity Log table at the bottom carrying timestamp, action, details, and actor for every state transition
+5. Per-side actions: Accept, Dispute (with structured reason), Edit (own tag, requires reason), Propose Compromise, Add note
+6. Dispute clock: starts when both sides have posted; default-accept at sender's tag values after N days
+7. Ghost-account invite: tags addressed to an email create a placeholder Org. The invitee claims it via magic link, becoming the first admin of the Org. Onboarding nudge prompts them to invite a colleague.
+8. Bulk action: select closed weigh tags and mark as invoiced with an external invoice number; download printable PDF summary
+9. Search, filter, aggregate, and export across historical weigh tags (including by invoice number)
+10. Admin management: invite users to an Org, promote/demote roles, end memberships, verify Org domain
+
+## Architecture
+
+### Stack with rationale
+
+- **Phoenix LiveView + Ecto + Postgres.** The product's central UX — two parties watching the same Load update in real time, with deliberate state transitions — is exactly what LiveView was built for. Server-rendered with reactive updates means no JS framework overhead and no API serialization layer. The dense business-app aesthetic is more natural in server-rendered HTML than in modern React. Single language end-to-end reduces cognitive load. Trade-off acknowledged: rebuilding Elixir/OTP intuition slows the first weeks; assumed worthwhile because the fit is strong and the curve front-loads.
+
+- **Postgres for storage.** Financial-adjacent data needs real constraints, transactions, and foreign keys. The matching engine is set-based SQL — auto-pair on BOL is literally a join; smart pairing is Levenshtein plus a few WHERE clauses. Row-level security gives multi-tenant isolation. The audit log is an append-only table with triggers. Aggregation queries over historical data are native Postgres territory. Postgres is also the substrate Oban uses, so one storage system handles application data, jobs, and audit.
+
+- **Oban for scheduled jobs.** The dispute clock (fire reminder at T+N/2, T+N-1, auto-accept at T+N) is exactly its sweet spot. Postgres-backed means no Redis. Scheduled jobs with retries, idempotency, and visibility.
+
+- **Phoenix PubSub for realtime.** Built-in. *"Buyer just disputed"* / *"grower is viewing now"* patterns are one-liners.
+
+- **Auth: email + password (primary), magic-link (recovery and invite onboarding).** Active users rely on browser autofill. *Forgot password?* sends a magic link. Invited partners arrive via magic link as their first touch. Phoenix `phx.gen.auth` baseline with token invites layered on.
+
+- **Strict CSV schema with per-row validation.** We control the format. Validation at the import boundary keeps the domain clean.
+
+- **Append-only audit log.** Every state transition writes an immutable event, enforced at the DB level with triggers. References actor (user) and action (with relevant entity IDs); role is not embedded.
+
+- **Tables: `users`, `orgs`, `memberships`, `tags`, `loads`, `invoice_batches`, `audit_events`.** Plus supporting tables (partners, settings, attachments). Clean separation of who-is-who from what-happened.
+
+- **PDF rendering.** For invoice batch summaries and audit-log exports. `ChromicPDF` or similar Elixir library, server-rendered from a template.
+
+- **Org-scoped data isolation.** Multi-tenant from day one. Postgres RLS where it fits cleanly; application-level enforcement for cross-org shared records (a Load is visible to both grower and buyer Orgs; an invoice batch is visible to sender and recipient Orgs). RLS as default safety net.
+
+### Explicitly not doing
+
+- Not microservices — premature; OTP gives logical isolation without operational cost.
+- Not an SPA — older users don't need it; server-rendered HTML with LiveView reactivity is the right shape.
+- Not eventual consistency — financial data; strong consistency from a single Postgres primary is the right default.
+- Not blind / sealed-bid submission — analytics surfaces patterns more powerfully and without friction.
+- Not generative invoicing — invoice batches track the bridge; the invoice itself is generated by the sender's accounting system.
+- Not embedding role inside audit log entries — historical events stand on their own; role is queryable from membership data when ever needed.
+
+### Alternatives considered
+
+- **Supabase + Next.js + AG Grid.** Rejected primarily because LiveView's fit for shared-state realtime UI is genuinely better, and the React stack's natural aesthetic skews against the dense business-app feel.
+- **Django admin + HTMX.** Viable fallback if the Phoenix curve proves too costly.
+- **Filament (Laravel).** Most polished admin UI out of the box, but stack unfamiliar.
+
+### Design prototype
+
+A working React + Vite + Tailwind v4 prototype implements the visual design language (see *Canonical screens*). The prototype is for design iteration only — not the production stack. The production application is Phoenix LiveView; the prototype's role is to pin down typography, spacing, color palette, table density, status pill treatment, and component patterns (Variance Status callout, Activity Log, Weigh Tag Comparison table) before they're translated into LiveView components. Keeping design and production stacks separate during early iteration is deliberate: the React prototype is fast to change and cheap to throw away; the LiveView implementation is the thing that needs to last.
+
+The prototype was originally exported from a Figma Make session and has been iterated on directly in code. Source lives at `WeighTagsFigma-v3.zip`.
+
+## The app is the business
+
+WeighTags is not a venture that builds a product and moves on to the next thing. The codebase *is* the business — every line we write becomes operational infrastructure that paying customers rely on for commercial settlement. The team's job is to operate that infrastructure indefinitely, not to ship a thing and look elsewhere.
+
+This framing has consequences for how we engineer, deploy, and invest in the codebase.
+
+### Operating principles
+
+- **The codebase is a long-lived asset.** Maintainability is funded work, not stolen time. Refactoring happens deliberately each cycle, before debt compounds into a rewrite. An ugly module that works today is a tax on every future feature; the tax gets paid in the cycle it's noticed.
+- **Deploys are cheap, fast, frequent, and reversible.** Continuous deployment from green main. Multiple deploys per day are normal, not exceptional. A bad deploy rolls back automatically on health-check failure. The pipeline itself is a product the team owns and improves; CI runtime, flake rate, and deploy time are tracked metrics.
+- **Money-adjacent paths are covered.** Every Load state transition, every dispute-clock event, every auto-accept fire, every invoice batch action has explicit test coverage. Audit-log invariants are enforced at the database level with constraints and triggers, not in application code that can drift.
+- **Observability is built in, not bolted on.** Structured logs on every state transition. Traces on every realtime broadcast. Alerts on dispute-clock anomalies, auto-accept misfires, notification delivery failures, and CSV ingest errors. The goal is to see problems before customers do.
+- **Production incidents are material.** Blameless postmortems, action items tracked to completion, runbooks updated, alert thresholds re-tuned. The audit log we keep for customers also serves us when something goes wrong on our side.
+- **Boring by default.** Phoenix + Postgres + Oban is one runtime, one database, one job queue. Adding new infrastructure requires explicit justification against operational cost. Boring is the goal because boring is what scales without a team to babysit it.
+- **A refactoring budget is real budget.** A standing share of every cycle goes to paying down debt, hardening tests, improving observability, and improving developer experience. The exact share is calibrated to debt pressure, but it is never zero, and it is never the residual after features.
+
+### Why this matters specifically for WeighTags
+
+The product is in a category where reliability *is* the value proposition. A customer using us is choosing us *over* email-and-Excel — and email-and-Excel, for all its faults, doesn't lose messages, doesn't fire auto-accept on the wrong load, doesn't get its row counts wrong. Our reliability bar is higher than typical SaaS because our mistakes inform real money downstream.
+
+The disciplines above are how we earn the right to be a system of record. Skipping them is the same business decision as not buying liability insurance: cheap until it isn't.
+
+### Self-supporting
+
+"The app supports itself" also means revenue covers costs. The pricing model, gross margin target, and minimum viable customer count are open questions that need to land before v2. Tracked in *Market paths and pillars of success* below.
+
+## Risks / open questions
+
+- **Service reliability.** Incorrect auto-accept firing, lost notifications, or data loss would draw us into disputes that didn't need to happen. Higher SaaS reliability bar than typical CRUD because state transitions inform real money downstream.
+- **UI clarity around platform state vs. parties' actual agreement.** Must be unambiguous (*"marked accepted in our system,"* not *"legally accepted"*).
+- **BOL reliability across target commodities.** Validated in domain, worth confirming with first customers.
+- **Dispute window default and tolerance defaults.** Must be configurable per relationship.
+- **Email deliverability.** Critical; production ESP (Postmark / SES) from day 1.
+- **Single-sided invite friction.** Does this feel pushy to invited partners? Adoption-side risk worth measuring early.
+- **Data handling.** Commercially sensitive information for both sides; security, isolation, access logs.
+- **Data retention policy.** Tax, audit, and insurance use cases assume long retention (7+ years). Pricing and storage cost implications worth thinking through before launch.
+- **Sole-admin departure.** If an Org has only one admin and that user leaves, the Org could be orphaned. Mitigations: persistent warning banner; onboarding nudge to invite a colleague; domain-verified admin recovery; support-mediated recovery as last resort.
+- **Email deactivation post-departure.** A departing user's work email may be cut off before they've handed over admin. Mitigation: encourage personal email as backup recovery on the account, or domain-verified recovery for the Org itself.
+
+## Milestones
+
+### v0 — private alpha (1 grower / 1 buyer, hand-held)
+
+CSV upload from one side. Magic-link invite to counterparty. Auto-match on BOL and basic smart pairing. Side-by-side diff. Manual timeout management (no Oban yet). Manual export. Single-user-per-org acceptable; admin management deferred.
+
+### v1 — paid pilot (3-5 relationships)
+
+Multi-org auth + RBAC, with proper User / Org / Membership separation. CSV import with validation + error report. Full state machine with Oban-driven timeouts, reminders, and notifications. Compromise resolution. Audit trail visible to both sides. Search, filter, and export across historical weigh tags. Per-relationship tolerances and dispute windows. Invoice batches (sender marks tags as invoiced; receiver verifies via badge and search; PDF summary export). Admin management UI (invite, promote, end membership). Persistent sole-admin warning.
+
+### v2 — public launch
+
+Configurable everything. Counterparty address book. Notifications inbox. Self-serve signup. Domain verification and domain-based admin recovery. Print-friendly views and PDF export beyond invoice batches.
+
+## Hypothesis: Insights / Analytics (post-MVP, lower speculation)
+
+Once volume accumulates, aggregate views of historical weigh tag data become valuable in their own right: pattern detection across a partner relationship (average net delta, distribution of disputes, dispute resolution time), and cross-partner comparison from a single user's perspective. The audit log already captures the underlying data; insights are aggregation queries with a view layer.
+
+Meaningfully less speculative than the settlement expansion below — the infrastructure is built into the MVP, the use case is clearly latent, and the upsell path is natural. Probably v2 or just post-v2.
+
+## Hypothesis: settlement expansion (speculative, post-MVP)
+
+The platform *may* extend from tracking invoice batches into generating the invoices themselves — adding pricing per unit, applying contract terms, producing the final billed amount. From there, payment tracking, and eventually payment rails. Not a committed roadmap; a direction informed by the observation that reconciled tags often face a second reconciliation downstream (bill vs. tag, payment vs. bill), and that the invoice-batch concept already sits one step from invoice generation.
+
+**Signal that would support pursuing it:** customers asking for price-per-unit / total-due fields on invoice batches; repeat downstream disputes; bookkeeper time still significant after tags reconciled; willingness to pay materially more for settlement.
+
+**Signal that would invalidate it:** customers happy taking reconciled CSV and the invoice-batch bridge into existing accounting; per-customer pricing complexity too fragmented for a generic invoicing layer; compliance / regulatory cost exceeds value.
+
+The architecture leaves room without committing: the invoice batch entity is already there, ready to grow pricing and total-due fields if signal supports it.
