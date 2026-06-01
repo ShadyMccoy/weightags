@@ -12,9 +12,13 @@ Growers and buyers both weigh truckloads independently — for legitimate reason
 
 ## Strategic wedge
 
-Single-sided adoption via default-accept timeout. A grower can post tags addressed to a buyer's email; the system creates a placeholder org and invites the buyer. If the buyer engages, both parties see the same diff in real time. If they don't, after N days the tags are considered accepted in our system.
+**Records gravity, not coordination pressure.** The wedge starts from a common asymmetry: one party keeps better records than the other, and the other keeps asking for them. The better-records party (A) adopts WeighTags for their *own* convenience — post the day's tags once, stop emailing spreadsheets, look organized — and is essentially done. Because those tags are addressed to the counterparty (B), B gets low-friction access to exactly the records B has been chasing. A adopted for single-player value; B is pulled in because B *wants the data*. There is no coordination campaign and no pressure — the gravity is B's own desire for A's records. Single-sided adoption is the deliberate on-ramp, not a compromise.
 
-Converts an active-coordination problem ("get the buyer to sign up") into a passive-action problem ("engage or you've accepted").
+**The dispute moment is the counterparty's activation.** B's first real interaction is almost always a discrepancy — *"this invoice is wrong because of weigh tag XYZ."* Today that's an email or a phone call. The conversion is A's easy answer: *"next time that happens, just click Dispute here."* B's ad-hoc complaint becomes a structured, audited, one-click action — and now B is a real user on the same shared record. The single-player on-ramp becomes multiplayer at the exact moment B has a reason to engage. The activation funnel is therefore concrete: **invoice → look up the tag → Dispute.** A frictionless invoice-number lookup and a dead-simple contextual Dispute button are the conversion surface, not bookkeeping niceties.
+
+**The default-accept timeout is a backstop, not the lead.** If B never engages, the Load still closes on our record after N days, defaulting to A's tag values. The teeth of that are **evidential, not contractual.** We make no claim that B "legally accepted" — the platform is not a party to the deal. What the timeout produces is a neutral, timestamped record that B was shown the numbers, notified on a fixed schedule, and did not contest. *Silence on a neutral record* is what carries weight in the parties' own later dispute resolution — the same third-party-record force the audit log gives us (see *Positioning principle*). Evidence binds without buy-in, where "acceptance" would not — which is also why the wedge reads as neutral rather than coercive: a record of what happened, not a clock that declares a concession.
+
+Converts an active-coordination problem ("get the buyer to sign up") into the combination of **records gravity** (B comes for the data), a **one-click conversion at the dispute moment**, and an **evidential timeout** as the floor beneath both.
 
 ## Positioning principle
 
@@ -29,6 +33,8 @@ This is structurally different from how the rest of the category works:
 The audit log we keep — timestamps, view records, notification history, value changes — is a defensible third-party record the parties can use in their own dispute resolution, like an email server's logs in a discovery process. The platform makes communication and audit easier; the parties remain responsible for their commercial relationship.
 
 Every design decision either reinforces multiplayer (sender-left/receiver-right consistent regardless of who's logged in; symmetric actions; org-owned data on both sides; both parties cited in the audit log) or weakens it. When in doubt, default to symmetric.
+
+**Symmetry is an architecture invariant, not an adoption constraint.** The multiplayer model governs how the *system is built* — data ownership, UI layout, the actions available to each side, audit attribution. It does not dictate how adoption *starts*. Adoption is frequently asymmetric: one party leads (keeps better records, adopts first), the other is pulled in (see *Strategic wedge* — records gravity). That asymmetry at the front door is expected and fine; once both parties are in, the symmetric architecture governs the relationship. **Build symmetric; let adoption be asymmetric.**
 
 ## Market paths and pillars of success
 
@@ -71,7 +77,7 @@ The things we'd actually act on:
 
 ### Pillars of success beyond technical merit
 
-- **Multiplayer-first.** Both parties have equal agency, equal data ownership, equal visibility. Sender-left/receiver-right consistent regardless of who's logged in. Symmetric default for every product decision. This is the single biggest differentiation against the competitive set; if we lose it, we become a worse master platform.
+- **Multiplayer-first.** Both parties have equal agency, equal data ownership, equal visibility. Sender-left/receiver-right consistent regardless of who's logged in. Symmetric default for every *product/architecture* decision — though adoption itself is often asymmetric (see *Positioning principle*: build symmetric, let adoption be asymmetric). This is the single biggest differentiation against the competitive set; if we lose it, we become a worse master platform.
 - **Ingest excellence.** It's in the name. CSV (v0), refined manual entry (v1), production public API (v2) — all rock solid. Without this, nothing else matters.
 - **Audit defensibility.** The log is, to a real degree, the product. It has to hold up in a real commercial dispute. Append-only at the database level; attribution durable across job changes and org migrations.
 - **Low-friction wedge.** Default-accept timeout plus free partner means invitee adoption cost is near zero. If invitee friction creeps up, the wedge stops pulling and the whole acquisition model breaks.
@@ -279,7 +285,7 @@ Tables as primary display, subtle row striping, warm-neutral background. Compact
 
 ## Canonical screens
 
-A working React + Vite + Tailwind v4 prototype implements the design language described above. The artifact lives at `WeighTagsFigma-v3.zip`, exported from a Figma Make session and then iterated on directly in code. The four screens below are the ones in implementation today. Each is captioned with the state it shows and the design decisions visible in it; together they exercise the full status palette and the core diff pattern.
+A working React + Vite + Tailwind v4 prototype implements the design language described above. The artifact lives at [`docs/design/prototype/`](design/prototype/) (originally exported from a Figma Make session as `WeighTagsFigma-v3.zip`, then iterated on directly in code and unpacked into the repo). The four screens below are the ones in implementation today. Each is captioned with the state it shows and the design decisions visible in it; together they exercise the full status palette and the core diff pattern.
 
 Figma frame links are placeholders — to be filled in once the canonical frames are pulled back into the Figma file.
 
@@ -471,7 +477,7 @@ Append-only. Each entry references the actor (user) and the action (with relevan
 
 A working React + Vite + Tailwind v4 prototype implements the visual design language (see *Canonical screens*). The prototype is for design iteration only — not the production stack. The production application is Phoenix LiveView; the prototype's role is to pin down typography, spacing, color palette, table density, status pill treatment, and component patterns (Variance Status callout, Activity Log, Weigh Tag Comparison table) before they're translated into LiveView components. Keeping design and production stacks separate during early iteration is deliberate: the React prototype is fast to change and cheap to throw away; the LiveView implementation is the thing that needs to last.
 
-The prototype was originally exported from a Figma Make session and has been iterated on directly in code. Source lives at `WeighTagsFigma-v3.zip`.
+The prototype was originally exported from a Figma Make session and has been iterated on directly in code. Source lives at [`docs/design/prototype/`](design/prototype/).
 
 ## The app is the business
 
@@ -502,11 +508,11 @@ The disciplines above are how we earn the right to be a system of record. Skippi
 ## Risks / open questions
 
 - **Service reliability.** Incorrect auto-accept firing, lost notifications, or data loss would draw us into disputes that didn't need to happen. Higher SaaS reliability bar than typical CRUD because state transitions inform real money downstream.
-- **UI clarity around platform state vs. parties' actual agreement.** Must be unambiguous (*"marked accepted in our system,"* not *"legally accepted"*).
+- **UI clarity around platform state vs. parties' actual agreement.** Copy should lean on the *evidential* frame — *"recorded,"* *"notified,"* *"uncontested as of [date]"* — rather than even *"accepted,"* which overstates the platform's role. We record and notify; we do not adjudicate (see *Strategic wedge*).
 - **BOL reliability across target commodities.** Validated in domain, worth confirming with first customers.
 - **Dispute window default and tolerance defaults.** Must be configurable per relationship.
 - **Email deliverability.** Critical; production ESP (Postmark / SES) from day 1.
-- **Single-sided invite friction.** Does this feel pushy to invited partners? Adoption-side risk worth measuring early.
+- **Single-sided invite friction.** Does this feel pushy to invited partners? Adoption-side risk worth measuring early. The *evidential* framing (a neutral record of what was shown and notified, not a declared concession) is the intended mitigation — but whether invitees *perceive* it as neutral is the thing to measure, not assume.
 - **Data handling.** Commercially sensitive information for both sides; security, isolation, access logs.
 - **Data retention policy.** Tax, audit, and insurance use cases assume long retention (7+ years). Pricing and storage cost implications worth thinking through before launch.
 - **Sole-admin departure.** If an Org has only one admin and that user leaves, the Org could be orphaned. Mitigations: persistent warning banner; onboarding nudge to invite a colleague; domain-verified admin recovery; support-mediated recovery as last resort.

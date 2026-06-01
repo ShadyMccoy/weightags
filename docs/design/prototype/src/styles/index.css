@@ -1,0 +1,39 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+
+/* Print styles for clerical documentation */
+@media print {
+  @page {
+    margin: 0.75in;
+  }
+
+  body {
+    background: white !important;
+    font-size: 10pt;
+  }
+
+  header,
+  footer,
+  button,
+  [role="button"] {
+    display: none !important;
+  }
+
+  table {
+    page-break-inside: avoid;
+  }
+
+  tr {
+    page-break-inside: avoid;
+  }
+
+  .border {
+    border-color: #000 !important;
+  }
+
+  /* Ensure tabular numerals in print */
+  .tabular-nums {
+    font-feature-settings: "tnum" 1;
+  }
+}

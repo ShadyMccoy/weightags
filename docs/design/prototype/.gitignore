@@ -1,0 +1,5 @@
+# Prototype is a design artifact, not a build target — keep installed/built output out of git.
+node_modules/
+dist/
+*.local
+.vite/

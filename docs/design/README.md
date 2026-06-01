@@ -4,12 +4,17 @@ Visual design language and canonical screens for WeighTags. The source of truth 
 intent is the [project charter](../charter.md) — see *Site aesthetic*, *Canonical
 screens*, and *Data model*. This folder holds the artifacts those sections reference.
 
+## Prototype
+
+The live React + Vite + Tailwind v4 prototype that implements this design language lives in
+[`prototype/`](prototype/) (formerly shipped as `WeighTagsFigma-v3.zip`). It is the **design source
+of truth** — exact hex, spacing, and component structure — and the input to the roadmap's UI
+engineering track. Design-only and throwaway; the production app is Phoenix LiveView. See
+[`prototype/README.md`](prototype/README.md).
+
 ## Mockups
 
-A React + Vite + Tailwind v4 prototype (exported from Figma Make, source in
-`WeighTagsFigma-v3.zip`) implements the design language. These PNGs are the four
-screens in implementation today. The prototype is for design iteration only — the
-production app is Phoenix LiveView.
+The PNGs below are screenshots of the prototype — the four screens in implementation today.
 
 | Screen | State shown | File |
 |---|---|---|
