@@ -3,6 +3,102 @@
 *Draft v3 — derived from [charter.md](charter.md). The charter is the source of truth; where this
 roadmap and the charter disagree, the charter wins and this document is wrong.*
 
+---
+
+## In plain English (start here)
+
+*The rest of this doc is the precise build plan with exact pass/fail criteria. This section is the
+same plan, explained like you're smart but new to it. If the two ever disagree, the detailed
+sections below win.*
+
+### What are we even building?
+
+When a farmer hauls a truckload of grapes (or grain) to a buyer, **both sides weigh the
+load** and write down a number. Then they compare. When the numbers don't match — and they often
+don't — someone's getting shorted, and it turns into phone calls, emails, and arguments. Today this
+happens on paper tickets and spreadsheets that each side keeps separately, so there's no shared
+truth.
+
+WeighTags is a **neutral scoreboard both sides can see at once.** Each side uploads its weigh-tickets
+("tags"), the system automatically matches the grower's ticket to the buyer's ticket for the same
+load, and shows them side by side with the difference in the middle. If there's a disagreement, you
+hit one button — **Dispute** — and there's a fair, ticking clock to resolve it. Think Google Docs,
+but for "how much did this truck actually weigh," with a permanent receipt of who saw what and when.
+
+Two ideas to hold onto:
+
+- **Multiplayer.** It's not one company's tool — it's a shared record between two parties. The
+  grower's data is on the left, the buyer's on the right, both see the same screen, and every action
+  is stamped with who did it.
+- **Evidential, not contractual.** If nobody disputes a load before the clock runs out, the system
+  records "this was *shown, notified, and uncontested*." It is **not** saying "you legally agreed."
+  That neutral record — the full history of who saw what — is the thing competitors can't easily copy.
+
+### The big strategic bet
+
+Most startups ship a tiny version first and see if anyone bites. **We're doing the opposite: build
+the whole thing first, *then* see if it pulls.** Why? Because this is a money tool. Nobody trusts a
+half-built product with their billing. A flimsy demo would give us a *fake* "nobody wants this"
+signal when the real problem was that it looked untrustworthy. The whole product is small enough that
+just finishing it is cheaper than running dishonest experiments. So: **finish, launch, then listen.**
+
+### How we know when a piece is "done"
+
+Two different kinds of checkpoints — don't mix them up:
+
+- **Feature gates** = "is this *piece* built right?" Every feature has a short, yes/no checklist.
+  These are pure engineering questions (does it work, is it tested, is the screen correct). Notably,
+  **the UI counts as engineering** — a screen built with the right colors and layout is a real
+  deliverable, not "decoration we'll polish later."
+- **Signal gates** = "is the *market* responding?" These are the only "should we keep going / change
+  direction" decisions, and **they all happen after launch.** By the time we're asking a market
+  question, the product is already finished.
+
+There is deliberately **no single "is the whole thing done?" meeting.** The build is launch-ready
+when every individual feature's checklist is green — it's a mechanical roll-up, not a judgment call.
+
+### The order we build in
+
+Foundation first, then four waves. Each builds on the last:
+
+| | | In plain terms |
+|---|---|---|
+| **Phase 0** | Foundation | Lay the plumbing *before* any feature: set up the framework, the database, auto-deploy, and the rule that **the history log can never be edited or deleted** (enforced by the database itself, not just by being careful). Reliability is the product, so we pay for it up front. |
+| **Wave A** | Spine & ingest | Logins and orgs, the app shell, and **getting data in**: bulk CSV upload (the flagship — "it's in the *name*"), typing tags in by hand at the scale house, and inviting a partner who doesn't have an account yet. |
+| **Wave B** | Reconciliation core | The heart: **auto-match** the two sides' tickets into one shared "Load," show them **side by side with the difference**, let each side Accept / Dispute / Edit / propose a compromise, and run the **dispute clock** that auto-resolves stale loads. |
+| **Wave C** | Record & money bridge | Make it a real system of record: an unforgeable **history log**, **search/filter/export**, per-partner tolerance settings, and **invoice batches + printable PDFs** — connecting reconciled loads to the bill without us touching the money itself. |
+| **Wave D** | Org maturity & launch-ready | The grown-up stuff so strangers can use it with zero hand-holding: admin tools, self-serve signup, domain verification, **notifications**, and **alerting** so *we* find out when something breaks, not the customer. |
+
+### How the product actually spreads (the clever part)
+
+We don't sell to both sides. The plan:
+
+1. **One side (call them A) adopts it alone** because it's genuinely useful even solo — a clean record
+   of all their loads. So A's solo experience has to be *excellent*.
+2. **A invites their partner B**, who gets pulled in because they *want to see A's data* — no password
+   needed just to look.
+3. **The magic moment is a disagreement.** B is checking an invoice, looks up a tag, sees the numbers
+   are off, and hits **one-click Dispute.** That single click is the whole conversion — it turns a
+   passive viewer into an active user. That's why the Dispute button gets first-class, obvious,
+   in-context treatment instead of being buried in a menu.
+
+The auto-resolve clock is just a **safety net** underneath all this, not the main attraction.
+
+### After launch: how we judge it (and when we'd quit)
+
+Once it's live in front of real grower↔buyer relationships, we stop building and start watching. The
+test isn't "did we hit a big revenue number" — it's "**is the line sloping up at small numbers?**"
+Specifically: does the inviter keep posting? Does the invitee actually *engage* (dispute things)
+instead of just letting the clock run? Does an invitee eventually invite *their own* counterparty
+(that's the network spreading)? Will someone *pay*?
+
+And we're honest about quitting. There are pre-committed **kill criteria** checked every 3 months in
+year one — e.g. "people pay but nobody organically invites anyone new," or "trajectory clearly isn't
+heading toward ~50 paying customers," or even "the work stopped being interesting." The bar to keep
+going is low *on purpose*, because we're measuring the slope, not the size.
+
+---
+
 ## How to read this
 
 The posture is **build the complete SaaS first, then listen for signal** — WeighTags is a
@@ -288,7 +384,7 @@ These decide direction and continuation, **not** feature scope. The features are
 | **Complaint → Dispute conversion** — invitee's first action is a one-click in-platform Dispute, not an email | The activation funnel works; records-gravity is real | The "easy Dispute button" isn't converting the dispute moment — the core motion is broken; investigate before scaling |
 | Invitee invites their **own** counterparty | Network propagating → consider scaling | 3 mo post-paid with no propagation → **Kill** |
 | A **paying** customer | Pricing validated | Re-examine willingness-to-pay |
-| Concentration in a vertical/geography | Take the matching **Branch** (winery / almond / grain) | Diffuse → stay generic (a valid outcome) |
+| Concentration in a vertical/geography | Take the matching **Branch** (winery / grain) | Diffuse → stay generic (a valid outcome) |
 | Paid referral or recurring feature request | Invest there | — |
 
 **Decision framework:** **Scale / commit to a vertical** on propagation + a center of gravity;
@@ -304,8 +400,8 @@ usage is real but diffuse (a success, not a failure); **Kill** per the charter c
 - **Settlement expansion** (speculative) — invoice generation (pricing, terms, total due) → payment
   tracking. Gate: customers ask for price/total-due on batches; repeat downstream disputes; willingness
   to pay materially more. Invalidated by: customers happy taking reconciled CSV into existing accounting.
-- **Vertical investment** — on Phase 2 concentration signal: winery → crush.wine v2 API; almond →
-  AgTracker / Rava; grain → the cross-network niche Bushel structurally can't close.
+- **Vertical investment** — on Phase 2 concentration signal: winery → crush.wine v2 API; grain → the
+  cross-network niche Bushel structurally can't close.
 
 ---
 
