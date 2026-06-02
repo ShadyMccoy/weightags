@@ -64,10 +64,28 @@ The things we'd actually act on:
 ### Branches we'd take if signals appear
 
 - **Winery signal** → invest in crush.wine integration. Zero CAC; your existing customer base on one side; the v2 API is the natural extension.
-- **Almond signal** → warm intros through AgTracker / Rava network. Real domain depth available if it's worth investing.
 - **Grain cross-network signal** → defensible niche. Bushel only reconciles between Bushel-powered partners; the other ~60% of US grain origination plus all cross-network trades is still on email-and-Excel.
 - **Diffuse signal across verticals** → stay vertical-agnostic; double down on the generic multiplayer product.
 - **No signal after a fair shot** → kill without ego. The cost of discovery was low, the work built real engineering and product muscle, move on.
+
+### Distribution channels
+
+Consistent with the posture (near-zero CAC, no paid acquisition), only organic, compounding channels
+are in scope at launch; vertical channels are held for Phase 2 signal.
+
+- **SEO magnets (primary).** Free tools that rank *and* on-ramp — a weigh-tag CSV template that *is*
+  the import schema; shrink / moisture / dockage calculators; glossary and "cross-network
+  reconciliation" pages naming the gap Bushel structurally can't close.
+- **Product-led distribution.** The invoice-batch PDF's verification URL is a public, indexable,
+  branded record-verification page seeded every time a customer attaches a PDF — the audit-log moat
+  doing acquisition for free. Design it as a discovery surface, not just a utility.
+- **Channel partners.** Farm bookkeepers / ag CPAs referring their client book — hits both sides of a
+  relationship at once, near-zero CAC, the cheapest word-of-mouth.
+- **Warm seeds + the wedge itself.** One or two known relationships from the operator's network; the
+  wedge does the rest.
+- **Held for vertical signal.** Vertical forums and shows (e.g. Unified Wine & Grape Symposium, GEAPS
+  Exchange, crush.wine network) activate only once Phase 2 concentration appears — booths commit
+  capital and a vertical, which the upfront posture forbids.
 
 ### Competitive landscape
 
