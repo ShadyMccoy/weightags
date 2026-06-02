@@ -9,7 +9,7 @@ screens*, and *Data model*. This folder holds the artifacts those sections refer
 The live React + Vite + Tailwind v4 prototype that implements this design language lives in
 [`prototype/`](prototype/) (formerly shipped as `WeighTagsFigma-v3.zip`). It is the **design source
 of truth** — exact hex, spacing, and component structure — and the input to the roadmap's UI
-engineering track. Design-only and throwaway; the production app is Phoenix LiveView. See
+engineering track. Design-only and throwaway; the production app is a modern Rails app (Hotwire). See
 [`prototype/README.md`](prototype/README.md).
 
 ## Mockups

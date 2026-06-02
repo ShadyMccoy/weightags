@@ -42,7 +42,7 @@ Every design decision either reinforces multiplayer (sender-left/receiver-right 
 
 WeighTags is launched cheaply and listens for signal. We are not picking a vertical, picking a geography, or running a GTM motion upfront. The bet is that *if* there's a real workflow pain at small/mid operator scale, the product will surface it; *if* there isn't, we'll know early and at low cost.
 
-Concretely: minimum viable infrastructure on Fly, public beta visible to anyone with a link, one or two warm seeds to bootstrap the wedge, and continuous observation of what real usage looks like. No paid acquisition, no sales motion, no commitment to a vertical until signal points at one.
+Concretely: minimum viable infrastructure (a single small VPS deployed via Kamal, or a managed host like Fly / Render), public beta visible to anyone with a link, one or two warm seeds to bootstrap the wedge, and continuous observation of what real usage looks like. No paid acquisition, no sales motion, no commitment to a vertical until signal points at one.
 
 This posture is deliberate, not lazy. It minimizes cost-of-discovery for a market we don't yet understand, and it protects against premature commitment to a path that wouldn't pay.
 
@@ -122,7 +122,7 @@ Worth noting the network footprint, not just the dollar number: 500 paying custo
 Two consequences fall out of this pricing shape:
 
 - **CAC has to be near zero.** A $200 CAC implies 10-month payback at $20/month. The wedge has to do the acquisition work; we cannot afford a sales motion at this price, and we don't want one.
-- **Margins should be fat.** Phoenix on Fly is cheap, Postgres is cheap, email is cheap. 85–90% gross margin at scale is realistic. The constraint is customer count, not unit economics.
+- **Margins should be fat.** Rails on a small VPS (Kamal) is cheap, Postgres is cheap, email is cheap — and because Solid Queue / Solid Cache / Solid Cable are all Postgres-backed, there's no Redis line item either. 85–90% gross margin at scale is realistic. The constraint is customer count, not unit economics.
 
 These numbers are oriented as a sense of *what success looks like at this posture*, not a forecast. We're not aiming for $1M ARR; we're aiming for a sustainable, narrow, multiplayer product that earns its own keep.
 
@@ -456,44 +456,50 @@ Append-only. Each entry references the actor (user) and the action (with relevan
 
 ### Stack with rationale
 
-- **Phoenix LiveView + Ecto + Postgres.** The product's central UX — two parties watching the same Load update in real time, with deliberate state transitions — is exactly what LiveView was built for. Server-rendered with reactive updates means no JS framework overhead and no API serialization layer. The dense business-app aesthetic is more natural in server-rendered HTML than in modern React. Single language end-to-end reduces cognitive load. Trade-off acknowledged: rebuilding Elixir/OTP intuition slows the first weeks; assumed worthwhile because the fit is strong and the curve front-loads.
+- **Ruby on Rails 8 + Hotwire (Turbo + Stimulus) + Active Record + Postgres.** The product's central UX — two parties watching the same Load update in real time, with deliberate state transitions — is served by **Turbo Streams** broadcasting server-rendered partials over a WebSocket to every subscriber, the modern Rails answer to live, reactive UI. *Turbo Frames* scope in-place updates (expand the action ribbon, swap a status pill) without a full navigation; *Turbo Streams* push those same partials in real time when the counterparty acts; *Stimulus* supplies the small island of client behaviour the form needs (truck/driver autocomplete, modal confirmations, save-and-add-another). This is explicitly a **modern, Hotwire-reactive Rails app — not a classic full-page-reload CRUD app.** Crucially there is no separate JS framework and no API-serialization layer: the server renders HTML, and Turbo makes it feel live. The dense business-app aesthetic — tables, ledgers, side-by-side diffs — is more natural in server-rendered ERB (factored through **ViewComponent** for the Status Pill, Variance Status callout, Activity Log, and Weigh Tag Comparison table) than in a React SPA. Single language across the app (Ruby), the most batteries-included web framework in existence, and the deepest library and hiring pool of any option lower the cost of every future feature. Trade-off acknowledged: for *very* high-frequency updates, LiveView's stateful server-side diffing is marginally smoother than Turbo's broadcast-a-partial model — but our update cadence is human-paced (a post, an edit, a dispute), squarely in Turbo's sweet spot, and Rails' ecosystem maturity and familiarity more than compensate.
 
-- **Postgres for storage.** Financial-adjacent data needs real constraints, transactions, and foreign keys. The matching engine is set-based SQL — auto-pair on BOL is literally a join; smart pairing is Levenshtein plus a few WHERE clauses. Row-level security gives multi-tenant isolation. The audit log is an append-only table with triggers. Aggregation queries over historical data are native Postgres territory. Postgres is also the substrate Oban uses, so one storage system handles application data, jobs, and audit.
+- **Postgres for storage.** Financial-adjacent data needs real constraints, transactions, and foreign keys. The matching engine is set-based SQL — auto-pair on BOL is literally a join; smart pairing is `pg_trgm` / Levenshtein (`fuzzystrmatch`) plus a few `WHERE` clauses, expressed through Active Record / Arel. The audit log is an append-only table guarded by triggers and a `BEFORE UPDATE/DELETE` rule. Aggregation queries over historical data are native Postgres territory. Postgres is also the substrate for **Solid Queue** (jobs), **Solid Cache** (caching), and **Solid Cable** (WebSockets) — the Rails 8 defaults — so a *single* storage system handles application data, background jobs, realtime, caching, and audit, with **no Redis** to operate.
 
-- **Oban for scheduled jobs.** The dispute clock (fire reminder at T+N/2, T+N-1, auto-accept at T+N) is exactly its sweet spot. Postgres-backed means no Redis. Scheduled jobs with retries, idempotency, and visibility.
+- **Solid Queue for scheduled and background jobs.** The dispute clock (fire reminder at T+N/2 and T+N-1, auto-accept at T+N) is exactly its sweet spot: Solid Queue's recurring/scheduled jobs with retries, concurrency controls, and uniqueness, driven through Active Job. Postgres-backed (the Rails 8 default) means no Redis. Swappable for GoodJob or Sidekiq later if a specific need appears, but the default is the boring choice.
 
-- **Phoenix PubSub for realtime.** Built-in. *"Buyer just disputed"* / *"grower is viewing now"* patterns are one-liners.
+- **Turbo Streams over Solid Cable for realtime.** *"Buyer just disputed"* / *"grower is viewing now"* patterns are model-side one-liners — `broadcast_replace_to`, `broadcast_append_to` — scoped to the parties subscribed to that Load's stream. Solid Cable (Rails 8 default) is Postgres-backed, so realtime adds no new infrastructure either.
 
-- **Auth: email + password (primary), magic-link (recovery and invite onboarding).** Active users rely on browser autofill. *Forgot password?* sends a magic link. Invited partners arrive via magic link as their first touch. Phoenix `phx.gen.auth` baseline with token invites layered on.
+- **Auth: Rails 8 built-in authentication generator (email + password), magic-link for recovery and invite onboarding.** Active users rely on browser autofill. The Rails 8 `bin/rails generate authentication` scaffold gives sessions, password reset, and a clean schema as a starting point; signed/expiring magic-link tokens (`ActiveRecord::SignedId` / `generates_token_for`) are layered on for *Forgot password?* and for invited partners' first touch — they arrive via magic link with no password yet. (Devise is the fallback if we outgrow the built-in generator, but the generator is the boring-by-default choice now.)
 
-- **Strict CSV schema with per-row validation.** We control the format. Validation at the import boundary keeps the domain clean.
+- **Strict CSV schema with per-row validation.** We control the format. Validation at the import boundary (a dedicated import service object backed by Active Model validations, streamed with Ruby's stdlib `CSV`) keeps the domain clean and produces a per-row error report.
 
-- **Append-only audit log.** Every state transition writes an immutable event, enforced at the DB level with triggers. References actor (user) and action (with relevant entity IDs); role is not embedded.
+- **Append-only audit log.** Every state transition writes an immutable event, enforced at the DB level with triggers and constraints, not in application code that can drift. References actor (user) and action (with relevant entity IDs); role is not embedded.
 
-- **Tables: `users`, `orgs`, `memberships`, `tags`, `loads`, `invoice_batches`, `audit_events`.** Plus supporting tables (partners, settings, attachments). Clean separation of who-is-who from what-happened.
+- **Tables: `users`, `orgs`, `memberships`, `tags`, `loads`, `invoice_batches`, `audit_events`.** Plus supporting tables (partners, settings, attachments). Rails' pluralized table names map onto these directly. Clean separation of who-is-who from what-happened.
 
-- **PDF rendering.** For invoice batch summaries and audit-log exports. `ChromicPDF` or similar Elixir library, server-rendered from a template.
+- **PDF rendering.** For invoice batch summaries and audit-log exports. **Grover** (headless Chrome via Puppeteer) rendering an ERB/ViewComponent template — so the PDF and the on-screen artifact share one template — or **Prawn** if we want a pure-Ruby, no-Chrome dependency. Decided per artifact; Grover is the default for anything that should match a styled page.
 
-- **Org-scoped data isolation.** Multi-tenant from day one. Postgres RLS where it fits cleanly; application-level enforcement for cross-org shared records (a Load is visible to both grower and buyer Orgs; an invoice batch is visible to sender and recipient Orgs). RLS as default safety net.
+- **Org-scoped data isolation.** Multi-tenant from day one. Default association scoping and query objects enforce org boundaries in application code; Postgres **row-level security** is the default safety net underneath where it fits cleanly. Cross-org *shared* records are handled explicitly: a Load is visible to both grower and buyer Orgs, and an invoice batch to sender and recipient Orgs — these are deliberate joins through the relationship, never a leak in the default scope.
 
 ### Explicitly not doing
 
-- Not microservices — premature; OTP gives logical isolation without operational cost.
-- Not an SPA — older users don't need it; server-rendered HTML with LiveView reactivity is the right shape.
+- Not microservices — premature; a Rails "majestic monolith" gives logical isolation (and, if we ever need module boundaries, Packwerk) without operational cost.
+- Not an SPA — older users don't need it; Hotwire gives server-rendered HTML the reactivity it needs, and there is no API layer to maintain or version.
 - Not eventual consistency — financial data; strong consistency from a single Postgres primary is the right default.
 - Not blind / sealed-bid submission — analytics surfaces patterns more powerfully and without friction.
 - Not generative invoicing — invoice batches track the bridge; the invoice itself is generated by the sender's accounting system.
-- Not embedding role inside audit log entries — historical events stand on their own; role is queryable from membership data when ever needed.
+- Not embedding role inside audit log entries — historical events stand on their own; role is queryable from membership data whenever needed.
+- Not a heavy front-end build pipeline — import maps / Propshaft (or a thin esbuild + Tailwind step) only; we resist the gravitational pull toward a Node toolchain the product doesn't need.
 
 ### Alternatives considered
 
-- **Supabase + Next.js + AG Grid.** Rejected primarily because LiveView's fit for shared-state realtime UI is genuinely better, and the React stack's natural aesthetic skews against the dense business-app feel.
-- **Django admin + HTMX.** Viable fallback if the Phoenix curve proves too costly.
-- **Filament (Laravel).** Most polished admin UI out of the box, but stack unfamiliar.
+- **Phoenix LiveView + Ecto + Oban.** On paper the most natural fit for shared-state realtime UI, and stateful server-side diffing is genuinely smoother than broadcasting partials for high-frequency updates. Rejected for *this* build because Rails wins on ecosystem maturity, library breadth (CSV, PDF, auth, admin, background jobs), hiring pool, and operator familiarity — and our human-paced update cadence never needs LiveView's edge.
+- **Supabase + Next.js + AG Grid.** Rejected — the React SPA aesthetic skews against the dense business-app feel, and it reintroduces an API-serialization layer Hotwire lets us skip.
+- **Django + HTMX.** The closest philosophical cousin — server-rendered, hypermedia-driven, no SPA. Rails chosen over it for Hotwire's tighter first-party integration (Turbo Streams + Action Cable + Stimulus shipped and supported together) and the richer Ruby web ecosystem.
+- **Filament (Laravel).** Most polished admin UI out of the box, but the stack is less familiar than Rails and the admin-panel framing pulls toward the *master* pattern we're explicitly avoiding.
+
+### Deployment
+
+Deployed with **Kamal 2** (the Rails 8 default) — a Dockerized app shipped to a single small VPS to start, scaling to a few app containers behind a load balancer if volume warrants. Postgres runs as a managed instance (or a second box) so the database is backed up and operated independently of app deploys. A managed PaaS (Fly, Render) is an equally valid target and may be the faster path for v0; the architecture is host-agnostic. Kamal gives zero-downtime deploys, easy rollback, and no proprietary lock-in — consistent with *boring by default* and *deploys are cheap, fast, frequent, and reversible* below.
 
 ### Design prototype
 
-A working React + Vite + Tailwind v4 prototype implements the visual design language (see *Canonical screens*). The prototype is for design iteration only — not the production stack. The production application is Phoenix LiveView; the prototype's role is to pin down typography, spacing, color palette, table density, status pill treatment, and component patterns (Variance Status callout, Activity Log, Weigh Tag Comparison table) before they're translated into LiveView components. Keeping design and production stacks separate during early iteration is deliberate: the React prototype is fast to change and cheap to throw away; the LiveView implementation is the thing that needs to last.
+A working React + Vite + Tailwind v4 prototype implements the visual design language (see *Canonical screens*). The prototype is for design iteration only — not the production stack. The production application is a **modern Rails app (Hotwire)**; the prototype's role is to pin down typography, spacing, color palette, table density, status pill treatment, and component patterns (Variance Status callout, Activity Log, Weigh Tag Comparison table) before they're translated into server-rendered **ViewComponents + ERB**, wired up with Turbo and Stimulus. Keeping design and production stacks separate during early iteration is deliberate: the React prototype is fast to change and cheap to throw away; the Rails implementation is the thing that needs to last. Tailwind carries across the boundary — the same utility classes the prototype uses are compiled into the Rails app (via `tailwindcss-rails`), so the translation is component structure and data wiring, not a visual re-derivation.
 
 The prototype was originally exported from a Figma Make session and has been iterated on directly in code. Source lives at [`docs/design/prototype/`](design/prototype/).
 
@@ -506,11 +512,11 @@ This framing has consequences for how we engineer, deploy, and invest in the cod
 ### Operating principles
 
 - **The codebase is a long-lived asset.** Maintainability is funded work, not stolen time. Refactoring happens deliberately each cycle, before debt compounds into a rewrite. An ugly module that works today is a tax on every future feature; the tax gets paid in the cycle it's noticed.
-- **Deploys are cheap, fast, frequent, and reversible.** Continuous deployment from green main. Multiple deploys per day are normal, not exceptional. A bad deploy rolls back automatically on health-check failure. The pipeline itself is a product the team owns and improves; CI runtime, flake rate, and deploy time are tracked metrics.
-- **Money-adjacent paths are covered.** Every Load state transition, every dispute-clock event, every auto-accept fire, every invoice batch action has explicit test coverage. Audit-log invariants are enforced at the database level with constraints and triggers, not in application code that can drift.
+- **Deploys are cheap, fast, frequent, and reversible.** Continuous deployment from green main via Kamal. Multiple deploys per day are normal, not exceptional. A bad deploy rolls back on health-check failure. The pipeline itself is a product the team owns and improves; CI runtime, flake rate, and deploy time are tracked metrics.
+- **Money-adjacent paths are covered.** Every Load state transition, every dispute-clock event, every auto-accept fire, every invoice batch action has explicit test coverage (model and system specs — RSpec or Minitest, with system tests driving real Turbo interactions). Audit-log invariants are enforced at the database level with constraints and triggers, not in application code that can drift.
 - **Observability is built in, not bolted on.** Structured logs on every state transition. Traces on every realtime broadcast. Alerts on dispute-clock anomalies, auto-accept misfires, notification delivery failures, and CSV ingest errors. The goal is to see problems before customers do.
 - **Production incidents are material.** Blameless postmortems, action items tracked to completion, runbooks updated, alert thresholds re-tuned. The audit log we keep for customers also serves us when something goes wrong on our side.
-- **Boring by default.** Phoenix + Postgres + Oban is one runtime, one database, one job queue. Adding new infrastructure requires explicit justification against operational cost. Boring is the goal because boring is what scales without a team to babysit it.
+- **Boring by default.** Rails + Postgres + Solid Queue is one runtime, one database, one job queue — and with Solid Cache and Solid Cable also on Postgres, there's no Redis or separate broker to babysit. Adding new infrastructure requires explicit justification against operational cost. Boring is the goal because boring is what scales without a team to babysit it.
 - **A refactoring budget is real budget.** A standing share of every cycle goes to paying down debt, hardening tests, improving observability, and improving developer experience. The exact share is calibrated to debt pressure, but it is never zero, and it is never the residual after features.
 
 ### Why this matters specifically for WeighTags
@@ -529,26 +535,27 @@ The disciplines above are how we earn the right to be a system of record. Skippi
 - **UI clarity around platform state vs. parties' actual agreement.** Copy should lean on the *evidential* frame — *"recorded,"* *"notified,"* *"uncontested as of [date]"* — rather than even *"accepted,"* which overstates the platform's role. We record and notify; we do not adjudicate (see *Strategic wedge*).
 - **BOL reliability across target commodities.** Validated in domain, worth confirming with first customers.
 - **Dispute window default and tolerance defaults.** Must be configurable per relationship.
-- **Email deliverability.** Critical; production ESP (Postmark / SES) from day 1.
+- **Email deliverability.** Critical; production ESP (Postmark / SES) from day 1, wired through Action Mailer.
 - **Single-sided invite friction.** Does this feel pushy to invited partners? Adoption-side risk worth measuring early. The *evidential* framing (a neutral record of what was shown and notified, not a declared concession) is the intended mitigation — but whether invitees *perceive* it as neutral is the thing to measure, not assume.
 - **Data handling.** Commercially sensitive information for both sides; security, isolation, access logs.
 - **Data retention policy.** Tax, audit, and insurance use cases assume long retention (7+ years). Pricing and storage cost implications worth thinking through before launch.
 - **Sole-admin departure.** If an Org has only one admin and that user leaves, the Org could be orphaned. Mitigations: persistent warning banner; onboarding nudge to invite a colleague; domain-verified admin recovery; support-mediated recovery as last resort.
 - **Email deactivation post-departure.** A departing user's work email may be cut off before they've handed over admin. Mitigation: encourage personal email as backup recovery on the account, or domain-verified recovery for the Org itself.
+- **Realtime fan-out at scale.** Solid Cable on Postgres is right-sized for our human-paced cadence and modest concurrency, but it is the one component to watch if a single Load ever attracts many simultaneous viewers; the mitigation (swap Solid Cable's adapter, or move Action Cable to a dedicated process) is well-trodden and deferred until usage demands it.
 
 ## Milestones
 
 ### v0 — private alpha (1 grower / 1 buyer, hand-held)
 
-CSV upload from one side. Magic-link invite to counterparty. Auto-match on BOL and basic smart pairing. Side-by-side diff. Manual timeout management (no Oban yet). Manual export. Single-user-per-org acceptable; admin management deferred.
+CSV upload from one side. Magic-link invite to counterparty. Auto-match on BOL and basic smart pairing. Side-by-side diff (Hotwire, Turbo Frames). Manual timeout management (no Solid Queue / background jobs yet — fire reminders and auto-accept by hand). Manual export. Single-user-per-org acceptable; admin management deferred.
 
 ### v1 — paid pilot (3-5 relationships)
 
-Multi-org auth + RBAC, with proper User / Org / Membership separation. CSV import with validation + error report. Full state machine with Oban-driven timeouts, reminders, and notifications. Compromise resolution. Audit trail visible to both sides. Search, filter, and export across historical weigh tags. Per-relationship tolerances and dispute windows. Invoice batches (sender marks tags as invoiced; receiver verifies via badge and search; PDF summary export). Admin management UI (invite, promote, end membership). Persistent sole-admin warning.
+Multi-org auth + RBAC, with proper User / Org / Membership separation. CSV import with validation + error report. Full state machine with Solid Queue-driven timeouts, reminders, and notifications. Realtime Load updates via Turbo Streams. Compromise resolution. Audit trail visible to both sides. Search, filter, and export across historical weigh tags. Per-relationship tolerances and dispute windows. Invoice batches (sender marks tags as invoiced; receiver verifies via badge and search; PDF summary export). Admin management UI (invite, promote, end membership). Persistent sole-admin warning.
 
 ### v2 — public launch
 
-Configurable everything. Counterparty address book. Notifications inbox. Self-serve signup. Domain verification and domain-based admin recovery. Print-friendly views and PDF export beyond invoice batches.
+Configurable everything. Counterparty address book. Notifications inbox. Self-serve signup. Domain verification and domain-based admin recovery. Print-friendly views and PDF export beyond invoice batches. Public API (the v2 ingest channel) layered on the same domain services the UI uses.
 
 ## Hypothesis: Insights / Analytics (post-MVP, lower speculation)
 

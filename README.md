@@ -12,7 +12,7 @@ The project is currently in the charter phase — no application is scaffolded y
 docs/
   charter.md        Project charter — vision, market, data model, architecture, milestones
   design/           Design language, status palette, and canonical-screen mockups
-app/                Placeholder for the Phoenix LiveView app (not yet scaffolded)
+app/                Placeholder for the Rails app (not yet scaffolded)
 ```
 
 Start with [docs/charter.md](docs/charter.md).

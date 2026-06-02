@@ -114,8 +114,8 @@ done" checkpoint. Instead:
   on top of a shared *Definition of Done*. A feature is not "done" until its gate is green; the build
   is launch-ready when **every** feature gate is green (a mechanical roll-up, not a separate judgment
   call). Feature gates are pure engineering — completeness, trust, and **UI** (a screen translated to
-  production LiveView with the correct status palette and multiplayer invariants is an engineering
-  deliverable, not decoration).
+  production Rails (Hotwire) with the correct status palette and multiplayer invariants is an
+  engineering deliverable, not decoration).
 - **Signal gates** — the only solution-level gates, and they all sit **after launch** (Phase 2). They
   decide *direction and continuation* — iterate, pick a vertical, scale, hold, or kill — never whether
   to finish a feature. By the time a signal gate fires, the features are done.
@@ -167,11 +167,12 @@ these hold, plus its own criteria:
 Prerequisite infrastructure, built before any feature, because the charter funds reliability as work,
 not a bolt-on (*The app is the business*).
 
-**Build:** `mix phx.new` Phoenix LiveView + Ecto + Postgres + Oban in `app/` (replaces `hello.exs`);
-minimum viable Fly infra (one app, one Postgres primary, public URL); green-main continuous deploy with
+**Build:** `rails new` Rails 8 + Hotwire (Turbo + Stimulus) + Postgres + Solid Queue in `app/`
+(replaces `hello.rb`); minimum viable Kamal infra (one app container on a small VPS, one Postgres
+primary, public URL; Fly/Render a valid alternative target); green-main continuous deploy with
 auto-rollback on health-check failure; migrations for the seven tables; **append-only audit invariant
-enforced at the DB level**; production ESP (Postmark/SES) wired; structured logging + one realtime
-trace; [`design/prototype/`](design/prototype/) established as the design source of truth.
+enforced at the DB level**; production ESP (Postmark/SES) wired via Action Mailer; structured logging
++ one realtime trace; [`design/prototype/`](design/prototype/) established as the design source of truth.
 
 **Gate G0 — done when:**
 - A trivial change deploys from green main and auto-rolls-back on a forced health-check failure (proven once).
@@ -217,7 +218,7 @@ The timeout (**B5**) is the backstop beneath this funnel, not its driver.
 | **B2** Smart pairing + mutual confirmation | B1 |
 | **B3** Load diff view | B1 |
 | **B4** Per-side actions + state machine | B3 |
-| **B5** Dispute clock (Oban) + manual override | B4 |
+| **B5** Dispute clock (Solid Queue) + manual override | B4 |
 | **C1** Audit trail + activity feed | B4 |
 | **C2** Search / filter / aggregate / export | B1 |
 | **C3** Per-relationship tolerances + windows | B3, B5 |
@@ -254,7 +255,7 @@ preview; ingest errors alert us (money-adjacent).
 truck/driver, save-and-add-another; plus a manual single-entry fallback (charter *Key workflow 1*).
 *Gate:* an operator saves consecutive tags without leaving the form; common fields pre-fill from the
 last entry; truck/driver autocomplete from recent entries; a saved tag is visible to the partner
-immediately (PubSub).
+immediately (Turbo Streams).
 
 **A5 — Ghost-account invite & org claim.** Tags addressed to an email create a placeholder Org;
 invitee claims via magic link, no password first; onboarding nudge to invite a colleague (charter
@@ -293,11 +294,11 @@ preserves prior values; compromise can set canonical values matching neither tag
 reachable in one click from a discrepancy (including from an invoice-number lookup) and from the
 invitee's no-password view**; **every transition has explicit test coverage.**
 
-**B5 — Dispute clock (Oban) + manual override.** Clock starts when both sides post; reminders at
+**B5 — Dispute clock (Solid Queue) + manual override.** Clock starts when both sides post; reminders at
 T+N/2 and T+N−1; auto-accept at T+N defaulting to sender's tag; idempotent under retry; manual
 override retained as an operational safety valve.
 *Gate:* **auto-accept fires correctly and only correctly** — right Load, sender's values, right time,
-idempotent under forced Oban retry; reminders deliver at both marks; a dispute pauses the clock;
+idempotent under forced Solid Queue retry; reminders deliver at both marks; a dispute pauses the clock;
 auto-accept misfires and clock anomalies alert us. (Highest-stakes feature; this gate is the strictest.)
 
 ---
@@ -321,7 +322,7 @@ the filtered view (charter system-of-record stories).
 when reminders + auto-accept fire for that partner; defaults apply when unset.
 
 **C4 — Invoice batches + PDF.** Sender multi-selects closed tags and marks invoiced under an external
-invoice number; receiver verifies via badge + search; printable PDF summary (`ChromicPDF`). Platform
+invoice number; receiver verifies via badge + search; printable PDF summary (Grover). Platform
 tracks the bridge, not the monetary total (charter *Non-goals*).
 *Gate:* a closed tag belongs to at most one batch; an invoiced tag shows the badge to the receiver;
 the PDF (header, invoice #, tags, totals, verification URL) renders print-clean; batch actions audited.
@@ -415,7 +416,7 @@ blocked regardless of feature:
   actions; read-first/edit-deliberate). Correctness, not polish.
 - **Audit invariants stay DB-enforced.**
 - **Refactoring budget is non-zero** — never the residual after features.
-- **Boring-by-default** — new infra beyond Phoenix + Postgres + Oban needs explicit justification.
+- **Boring-by-default** — new infra beyond Rails + Postgres + Solid Queue needs explicit justification.
 - **Pipeline health tracked** — CI runtime, flake rate, deploy time with thresholds.
 - **Incidents are material** — blameless postmortem + tracked actions + runbook update on any
   money-adjacent incident.

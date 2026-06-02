@@ -9,7 +9,7 @@ Record them in the tracked docs below.**
 WeighTags — weigh-tag reconciliation between commodity growers and buyers. A neutral, **multiplayer**
 system of record that auto-pairs tags on BOL, surfaces discrepancies in a shared diff view, and
 resolves disputes on a deterministic clock. Currently in **charter phase** — no app scaffolded yet
-(`app/` holds a placeholder `hello.exs`).
+(`app/` holds a placeholder `hello.rb`).
 
 ## Source of truth — read these first
 
@@ -25,16 +25,16 @@ carry it. The charter is the arbiter; this file and the roadmap defer to it.
 
 ## Load-bearing decisions (all detailed in the docs above)
 
-- **Stack:** Phoenix LiveView + Ecto + Postgres + Oban on Fly. Boring-by-default; new infra needs
-  justification. (charter → *Architecture*)
+- **Stack:** Rails 8 + Hotwire (Turbo + Stimulus) + Postgres + Solid Queue, deployed with Kamal.
+  Boring-by-default; new infra needs justification. (charter → *Architecture*)
 - **Build posture:** build the **feature-complete SaaS first, then listen for signal**. A thin
   money-adjacent tool yields dishonest signal; the scope is contained enough that completeness is
   cheap. (roadmap → *How to read*)
 - **Gates are per-feature, not per-solution.** Each feature is done when its own gate is green; the
   build is launch-ready when all are. Market/signal gates come only *after* launch. (roadmap)
-- **UI is engineering.** A screen translated to production LiveView with the correct status palette
-  and multiplayer layout is a gated deliverable, not decoration. New screens are prototyped in
-  `docs/design/prototype/` first.
+- **UI is engineering.** A screen translated to production Rails (Hotwire — ViewComponents + Turbo)
+  with the correct status palette and multiplayer layout is a gated deliverable, not decoration. New
+  screens are prototyped in `docs/design/prototype/` first.
 - **The wedge is evidential, not contractual.** The default-accept timeout produces a neutral record
   of "shown, notified, uncontested" — not a claim of legal acceptance. UI copy avoids "accepted." It
   is also the audit-log moat — the same asset. (charter → *Strategic wedge*, *Risks*)
@@ -51,6 +51,6 @@ carry it. The charter is the arbiter; this file and the roadmap defer to it.
 
 ## Working conventions
 
-- Platform is Windows (PowerShell). Production target is Linux/Fly.
-- Once scaffolded, the app lives in `app/` (Phoenix); the prototype stays design-only in `docs/`.
+- Platform is Windows (PowerShell). Production target is Linux (Docker via Kamal).
+- Once scaffolded, the app lives in `app/` (Rails); the prototype stays design-only in `docs/`.
 - Commit/push only when asked.
