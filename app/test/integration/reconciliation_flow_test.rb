@@ -51,6 +51,29 @@ class ReconciliationFlowTest < ActionDispatch::IntegrationTest
     assert tag.reload.disputed?
   end
 
+  test "editing a weigh surfaces the before/after detail in the tag activity panel" do
+    rel = build_relationship
+    post_tag(org: rel.grower, counterparty: rel.buyer, side: :sender,
+      actor: rel.grower_user, bol: "BOL-99", gross: 60_000, tare: 15_000)
+    res = post_tag(org: rel.buyer, counterparty: rel.grower, side: :receiver,
+      actor: rel.buyer_user, bol: "BOL-99", gross: 59_000, tare: 15_000)
+    tag = res.tag.reload
+
+    sign_in_as rel.grower_user
+    assert_difference -> { AuditEvent.where(action: "weigh.edited").count }, 1 do
+      patch weigh_tag_path(tag), params: { gross: 59_000, tare: 15_000, reason: "Re-keyed off the printed ticket" }
+    end
+
+    get tag_path(tag)
+    assert_response :success
+    # The weigh.edited event is recorded against the Weigh, not the Tag, so it
+    # must still appear in the per-tag activity panel with its change detail.
+    assert_match "Weigh edited", response.body
+    assert_match "Re-keyed off the printed ticket", response.body
+    assert_match "45,000", response.body # before net
+    assert_match "44,000", response.body # after net
+  end
+
   test "a tag from another relationship is not reachable (org isolation)" do
     rel = build_relationship
     res = post_tag(org: rel.grower, counterparty: rel.buyer, side: :sender,

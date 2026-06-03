@@ -42,6 +42,16 @@ class Tag < ApplicationRecord
     self
   end
 
+  # Activity for this shipment spans events recorded against the Tag itself
+  # (state transitions) and against its Weighs (e.g. weigh.edited, which carries
+  # the before/after detail). The bare `audit_events` association only covers the
+  # Tag-subject half, so the panel must union in the weigh-subject events too.
+  def related_audit_events
+    AuditEvent
+      .where(subject_type: "Tag", subject_id: id)
+      .or(AuditEvent.where(subject_type: "Weigh", subject_id: weighs.ids))
+  end
+
   def both_sided?
     sender_weigh.present? && receiver_weigh.present?
   end

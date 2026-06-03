@@ -25,7 +25,7 @@ class TagsController < ApplicationController
   end
 
   def show
-    @activity = @tag.audit_events.recent_first.includes(:user, :actor_org)
+    @activity = @tag.related_audit_events.recent_first.includes(:user, :actor_org)
     @suggestions = PairingSuggestion.pending.for_tags(@tag.weighs.ids)
       .includes(:sender_org, :receiver_org)
     @merge_candidates = merge_candidates_for(@tag)
