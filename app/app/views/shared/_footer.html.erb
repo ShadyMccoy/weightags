@@ -1,0 +1,10 @@
+<footer class="border-t border-border bg-card py-4 px-6">
+  <div class="flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-muted-foreground">
+    <div>© <%= Date.current.year %> WeighTags • System of Record for Commodity Weight Reconciliation</div>
+    <div class="flex items-center gap-3">
+      <span><%= Time.current.zone %> (<%= Time.current.formatted_offset %>)</span>
+      <span>•</span>
+      <span>Last sync: <%= Time.current.strftime("%Y-%m-%d %H:%M:%S") %></span>
+    </div>
+  </div>
+</footer>

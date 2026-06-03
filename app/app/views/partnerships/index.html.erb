@@ -1,0 +1,37 @@
+<% content_for :title, "Partners — WeighTags" %>
+<% field = field_class %>
+
+<div class="py-6 px-6 max-w-3xl mx-auto">
+  <h1 class="text-2xl font-medium mb-1">Partner settings</h1>
+  <p class="text-sm text-muted-foreground mb-6">
+    Tolerance drives the "within tolerance" flag; the dispute window sets when reminders and
+    auto-accept fire. Changes re-apply to that partner's open weigh tags.
+  </p>
+
+  <% if @partnerships.none? %>
+    <div class="bg-card border border-border rounded-lg p-10 text-center text-sm text-muted-foreground">
+      No partners yet. Post a tag addressed to a partner to start a relationship.
+    </div>
+  <% else %>
+    <div class="space-y-3">
+      <% @partnerships.each do |p| %>
+        <%= form_with url: partnership_path(p), method: :patch,
+              class: "bg-card border border-border rounded-lg p-4 flex flex-wrap items-end gap-4" do %>
+          <div class="flex-1 min-w-[160px]">
+            <div class="text-xs text-muted-foreground mb-0.5">Partner</div>
+            <div class="font-medium"><%= p.counterparty_org.name %></div>
+          </div>
+          <div>
+            <label class="block text-xs text-muted-foreground mb-1">Tolerance (±%)</label>
+            <%= number_field_tag :tolerance_percent, p.tolerance_percent, step: 0.01, min: 0, class: "#{field} w-28" %>
+          </div>
+          <div>
+            <label class="block text-xs text-muted-foreground mb-1">Dispute window (days)</label>
+            <%= number_field_tag :dispute_window_days, p.dispute_window_days, min: 1, class: "#{field} w-32" %>
+          </div>
+          <%= submit_tag "Save", class: btn_class(:primary, size: :md) %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

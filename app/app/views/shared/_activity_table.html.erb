@@ -1,0 +1,34 @@
+
+<table class="w-full text-sm">
+  <thead>
+    <tr class="bg-secondary/60 text-left border-b border-border">
+      <th class="<%= th_class %>">Timestamp</th>
+      <th class="<%= th_class %>">Action</th>
+      <% if show_bol %><th class="<%= th_class %>">BOL</th><% end %>
+      <th class="<%= th_class %>">Details</th>
+      <th class="<%= th_class %>">Actor</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% events.each_with_index do |event, i| %>
+      <tr class="border-b border-border <%= 'bg-stripe' if i.even? %>">
+        <td class="px-4 py-2.5 font-mono tabular-nums text-xs whitespace-nowrap"><%= fmt_datetime(event.occurred_at) %></td>
+        <td class="px-4 py-2.5 font-medium"><%= activity_label(event.action) %></td>
+        <% if show_bol %>
+          <td class="px-4 py-2.5 font-mono">
+            <% if event.bol.present? && (linked = current_org.tags.find_by(bol: event.bol)) %>
+              <%= link_to event.bol, tag_path(linked), class: "text-primary hover:underline" %>
+            <% else %>
+              <%= event.bol || "—" %>
+            <% end %>
+          </td>
+        <% end %>
+        <td class="px-4 py-2.5 text-muted-foreground"><%= activity_details(event) %></td>
+        <td class="px-4 py-2.5"><%= event.actor_label %></td>
+      </tr>
+    <% end %>
+    <% if events.empty? %>
+      <tr><td colspan="<%= show_bol ? 5 : 4 %>" class="px-4 py-10 text-center text-muted-foreground text-sm">No activity yet.</td></tr>
+    <% end %>
+  </tbody>
+</table>

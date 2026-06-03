@@ -1,0 +1,26 @@
+# Git
+.git/
+.gitignore
+
+# Dev/test cruft not needed in the image.
+/log/*
+/tmp/*
+!/log/.keep
+!/tmp/.keep
+/storage/*
+!/storage/.keep
+/tmp/storage/*
+
+# Local env & secrets.
+/.env*
+config/master.key
+.kamal/secrets*
+
+# Assets are recompiled in the image.
+/app/assets/builds/*
+!/app/assets/builds/.keep
+/public/assets
+
+# CI / editor noise.
+/.github
+.byebug_history

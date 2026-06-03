@@ -272,11 +272,18 @@ Load is visible to both orgs.
 *Gate:* two tags with the same BOL from opposing orgs auto-form one Load visible to both; one-sided
 tags render as Left-only/Right-only with explicit `—`.
 
-**B2 — Smart pairing + mutual confirmation.** Fuzzy BOL match (Levenshtein + date/truck/weight
-corroboration) proposed to both parties, requiring mutual confirmation before pairing (charter *Key
-workflow 3*).
-*Gate:* a near-miss BOL surfaces a suggested pair; the Load forms only after **both** parties confirm;
-a rejected suggestion leaves both tags one-sided; the suggestion + confirmations are audited.
+**B2 — Smart pairing + reconciliation (identity resolution).** Fuzzy reference match (Levenshtein +
+date/truck/weight corroboration) on differing references, plus **manual merge / split**. Governance is
+optimistic and symmetric per the charter (*Governance of shipment identity*): on **open** Tags a single
+confirm + notice links a suggested match; **mutual confirmation is required only when a merge/split would
+alter a settled (resolved/invoiced) record.** Merge re-homes weighs and GCs the emptied husk; split
+mints a Tag and moves weighs; every op is reversible, notified, and audited. (Earlier drafts required
+mutual confirmation for all pairing — relaxed here so the cooperative wedge stays low-friction.) The
+**weigh-in-against-the-partner's-Tag** ingest path (charter *Key workflow 1*) makes this the exception,
+not the rule.
+*Gate:* a near-miss reference surfaces a suggestion; one participant confirming links it on an open Tag
+and notifies the other; either party can split it back (reversible); a merge/split touching an invoiced
+Tag is refused until un-invoiced; every op is audited; a GC'd husk leaves its audit events intact.
 
 **B3 — Load diff view.** Sender-left / receiver-right comparison, centered delta column (absolute +
 %), Variance Status callout, per-side provenance (moisture, weighed_by, scale_id, weighed_at, notes),

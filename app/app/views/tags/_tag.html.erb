@@ -1,0 +1,31 @@
+<tr id="<%= dom_id(tag) %>" class="border-b border-border hover:bg-secondary/40">
+  <td class="px-4 py-2.5 font-mono">
+    <%= link_to tag.bol, tag_path(tag), class: "text-primary hover:underline" %>
+  </td>
+  <td class="px-4 py-2.5 tabular-nums whitespace-nowrap">
+    <%= fmt_short_date(tag.ship_date) %>
+  </td>
+  <td class="px-4 py-2.5"><%= tag.commodity.presence || "—" %></td>
+  <td class="px-4 py-2.5"><%= tag.sender_org.name %></td>
+  <td class="px-4 py-2.5"><%= tag.receiver_org.name %></td>
+  <td class="px-4 py-2.5 font-mono"><%= tag.truck.presence || "—" %></td>
+  <td class="px-4 py-2.5 text-right tabular-nums font-mono">
+    <%= tag.sender_weigh ? lb(tag.sender_weigh.net) : "—" %>
+  </td>
+  <td class="px-4 py-2.5 text-right tabular-nums font-mono">
+    <%= tag.receiver_weigh ? lb(tag.receiver_weigh.net) : "—" %>
+  </td>
+  <td class="px-4 py-2.5 text-right tabular-nums font-mono">
+    <% if tag.net_delta_percent %>
+      <span class="<%= tag.exceeds_tolerance? ? 'text-status-review' : '' %>"><%= signed_percent(tag.net_delta_percent) %></span>
+    <% else %>
+      <span class="text-muted-foreground">—</span>
+    <% end %>
+  </td>
+  <td class="px-4 py-2.5">
+    <%= render StatusPillComponent.for_tag(tag) %>
+    <% if tag.invoiced? && tag.invoice_batch %>
+      <span class="ml-1 text-xs text-muted-foreground font-mono" title="External invoice"><%= tag.invoice_batch.external_invoice_number %></span>
+    <% end %>
+  </td>
+</tr>

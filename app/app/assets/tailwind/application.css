@@ -1,0 +1,44 @@
+@import "tailwindcss";
+
+/* WeighTags design language — warm, clerical, vault-not-toy.
+   Translated from docs/design/prototype/src/styles/theme.css. */
+@theme {
+  --color-background: #faf9f7;     /* warm off-white, like quality paper */
+  --color-foreground: #1f1d1a;     /* deep warm black */
+  --color-card: #ffffff;
+  --color-primary: #2d2a25;        /* warm dark for primary actions */
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f5f2ed;      /* warm light beige */
+  --color-secondary-foreground: #2d2a25;
+  --color-muted: #e9e5df;
+  --color-muted-foreground: #706a61;
+  --color-accent: #f0ebe3;
+  --color-border: #e4ddd2;
+  --color-input-background: #f5f2ed;
+  --color-stripe: #fefcf8;         /* subtle row stripe */
+
+  /* Status palette — registered by escalation level (charter: Status palette).
+     Calm neutrals carry bookkeeping states; amber means "needs attention";
+     red is reserved for active conflict only. */
+  --color-status-draft: #8b7d6b;
+  --color-status-pending: #d97706;
+  --color-status-matched: #059669;
+  --color-status-review: #b45309;
+  --color-status-disputed: #dc2626;
+  --color-status-resolved: #0891b2;
+  --color-status-invoiced: #4f46e5;
+
+  --radius: 0.375rem;
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+}
+
+/* Reveal panels and the org-switcher menu start with the `hidden` attribute and
+   are toggled by Stimulus. Tailwind v4 preflight doesn't enforce it, so make the
+   attribute authoritative — panels stay hidden until revealed (and without JS). */
+[hidden] {
+  display: none !important;
+}

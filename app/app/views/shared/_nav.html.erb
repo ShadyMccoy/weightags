@@ -1,0 +1,22 @@
+<% items = [
+  ["Weigh tags", tags_path, controller_name == "tags"],
+  ["Invoices", invoice_batches_path, controller_name == "invoice_batches"],
+  ["Activity", activity_index_path, controller_name == "activity"],
+  ["Partners", partnerships_path, controller_name == "partnerships"],
+  ["Members", members_path, controller_name == "members"]
+] %>
+<% unread = Current.user.notifications.where(org: Current.org).unread.count %>
+<nav class="border-b border-border bg-card">
+  <div class="px-6 flex items-center gap-1">
+    <% items.each do |label, path, active| %>
+      <%= link_to label, path,
+            class: "px-3 py-2.5 text-sm border-b-2 #{active ? 'border-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}" %>
+    <% end %>
+    <%= link_to notifications_path,
+          class: "ml-auto px-3 py-2.5 text-sm border-b-2 #{controller_name == 'notifications' ? 'border-primary font-medium' : 'border-transparent text-muted-foreground hover:text-foreground'}" do %>
+      Notifications<% if unread.positive? %>
+        <span class="ml-1 inline-flex items-center justify-center text-xs rounded-full bg-status-pending text-white px-1.5"><%= unread %></span>
+      <% end %>
+    <% end %>
+  </div>
+</nav>

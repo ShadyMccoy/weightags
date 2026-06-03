@@ -1,0 +1,162 @@
+<% content_for :title, "BOL #{@tag.bol} — WeighTags" %>
+<%= turbo_stream_from "org_#{current_org.id}_loads" %>
+<% s = @tag.sender_weigh; r = @tag.receiver_weigh %>
+
+<div class="py-4 px-6 max-w-5xl mx-auto" data-controller="reveal">
+  <div class="mb-3">
+    <%= link_to tags_path, class: "text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1" do %>
+      ← Back to weigh tags
+    <% end %>
+  </div>
+
+  <div class="bg-card border border-border rounded mb-4">
+    <div class="px-6 py-4 border-b border-border flex items-center justify-between gap-3 flex-wrap">
+      <div class="flex items-center gap-3">
+        <h1 class="text-xl font-mono">BOL <%= @tag.bol %></h1>
+        <%= render StatusPillComponent.for_tag(@tag) %>
+      </div>
+      <%= render "actions" %>
+    </div>
+
+    <div class="px-6 py-4 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-sm">
+      <% [
+        ["BOL number", @tag.bol, "font-mono font-medium"],
+        ["Ship date", fmt_date(@tag.ship_date), "tabular-nums"],
+        ["Truck", @tag.truck.presence, ""],
+        ["Driver", @tag.driver.presence, ""],
+        ["Commodity", @tag.commodity.presence, "font-medium"],
+        ["Sender", @tag.sender_org.name, ""],
+        ["Receiver", @tag.receiver_org.name, ""]
+      ].each do |label, value, cls| %>
+        <div>
+          <div class="text-xs text-muted-foreground mb-0.5"><%= label %></div>
+          <div class="<%= cls %>"><%= value.presence || "—" %></div>
+        </div>
+      <% end %>
+    </div>
+  </div>
+
+  <%= render "action_panels" %>
+
+  <% if @suggestions.any? %>
+    <% @suggestions.each do |s| %>
+      <div class="border border-status-pending/30 bg-status-pending/5 rounded-lg p-4 mb-4">
+        <div class="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h3 class="font-medium mb-1">Possible match</h3>
+            <p class="text-sm text-muted-foreground">
+              BOL <span class="font-mono"><%= s.other_bol_for(current_org) %></span>
+              from <%= current_org.id == s.sender_org_id ? s.receiver_org.name : s.sender_org.name %>
+              looks like the same tag (edit distance <%= s.distance %>, corroborated by <%= s.corroboration %>).
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <% if s.confirmed_by?(current_org) %>
+              <span class="text-sm text-muted-foreground">Confirmed — waiting on the partner.</span>
+            <% else %>
+              <%= button_to "Confirm match", confirm_suggestion_path(s),
+                    class: btn_class(:primary) %>
+            <% end %>
+            <%= button_to "Dismiss", reject_suggestion_path(s),
+                  class: btn_class %>
+          </div>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+
+  <% if @merge_candidates.any? %>
+    <div class="border border-border bg-secondary/20 rounded-lg p-4 mb-4">
+      <h3 class="font-medium mb-1">Same shipment as another?</h3>
+      <p class="text-sm text-muted-foreground mb-3">
+        If this and another one-sided weigh tag are the same physical load (a different
+        BOL was keyed), merge them. This is reversible.
+      </p>
+      <%= form_with url: merge_tag_path(@tag), method: :post, class: "flex flex-wrap items-center gap-2" do %>
+        <%= select_tag :target_id,
+              options_for_select(@merge_candidates.map { |c| [ "BOL #{c.bol}#{" — #{c.commodity}" if c.commodity}", c.id ] }),
+              class: "px-3 py-1.5 text-sm rounded-md border border-border bg-card" %>
+        <%= submit_tag "Merge", class: btn_class(:primary) %>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if @tag.review? || @tag.disputed? %>
+    <% disputed = @tag.disputed? %>
+    <div class="border rounded-lg p-4 mb-4 <%= disputed ? 'bg-status-disputed/5 border-status-disputed/20' : 'bg-status-review/5 border-status-review/20' %>">
+      <div class="flex items-start gap-3">
+        <div class="<%= disputed ? 'text-status-disputed' : 'text-status-review' %> mt-0.5">⚠</div>
+        <div>
+          <h3 class="font-medium mb-1"><%= disputed ? "Dispute filed" : "Review needed" %></h3>
+          <p class="text-sm text-muted-foreground">
+            <% if disputed %>
+              <%= @tag.dispute_reason.presence || "A dispute has been filed on this tag." %>
+            <% else %>
+              Net weight variance <%= (@tag.net_delta_fraction.abs * 100).round(2) %>% exceeds the ±<%= (@tag.tolerance_fraction * 100).round(2) %>% tolerance.
+            <% end %>
+          </p>
+          <% if @tag.review? && @tag.clock_due_at %>
+            <p class="text-sm mt-2 text-muted-foreground">
+              If uncontested, this is recorded against the sender's values on
+              <span class="font-medium tabular-nums"><%= fmt_datetime(@tag.clock_due_at) %></span>.
+              File a dispute to pause the clock.
+            </p>
+          <% end %>
+          <% if disputed && @tag.dispute_notes.present? %>
+            <p class="text-sm mt-2 font-medium"><%= @tag.dispute_notes %></p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
+  <div class="bg-card border border-border rounded overflow-hidden">
+    <div class="bg-secondary/60 px-6 py-2.5 border-b border-border">
+      <h2 class="font-medium text-sm">Weigh tag comparison</h2>
+    </div>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="border-b border-border bg-secondary/40">
+          <th class="text-left px-6 py-2 font-medium text-xs text-muted-foreground w-[200px]">Field</th>
+          <th class="text-right px-6 py-2 font-medium text-xs text-muted-foreground">
+            Sender <%= s ? '<span class="text-status-matched">✓</span>'.html_safe : '<span class="text-muted-foreground">✕</span>'.html_safe %>
+          </th>
+          <th class="text-center px-6 py-2 font-medium text-xs text-muted-foreground bg-secondary/60">Δ</th>
+          <th class="text-right px-6 py-2 font-medium text-xs text-muted-foreground">
+            Receiver <%= r ? '<span class="text-status-matched">✓</span>'.html_safe : '<span class="text-muted-foreground">✕</span>'.html_safe %>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <% if (s && s.recorded_ref != @tag.bol) || (r && r.recorded_ref != @tag.bol) %>
+          <%= render "compare_row", label: "Recorded ref", s: s&.recorded_ref, r: r&.recorded_ref, num: false, stripe: true %>
+        <% end %>
+        <%= render "compare_row", label: "Gross weight (lb)", s: s&.gross, r: r&.gross, num: true, stripe: true %>
+        <%= render "compare_row", label: "Tare weight (lb)", s: s&.tare, r: r&.tare, num: true, stripe: false %>
+        <tr class="border-b border-border bg-stripe font-medium">
+          <td class="px-6 py-2.5">Net weight (lb)</td>
+          <td class="px-6 py-2.5 text-right font-mono tabular-nums"><%= s ? lb(s.net) : "—" %></td>
+          <td class="px-6 py-2.5 text-center bg-secondary/40"><%= render DeltaCellComponent.new(tag: @tag, metric: :net, show_pct: true) %></td>
+          <td class="px-6 py-2.5 text-right font-mono tabular-nums"><%= r ? lb(r.net) : "—" %></td>
+        </tr>
+        <% if s&.moisture || r&.moisture %>
+          <%= render "compare_row", label: "Moisture (%)", s: s&.moisture, r: r&.moisture, num: false, stripe: false %>
+        <% end %>
+        <%= render "compare_row", label: "Weighed at", s: fmt_datetime(s&.weighed_at), r: fmt_datetime(r&.weighed_at), num: false, stripe: true %>
+        <%= render "compare_row", label: "Weighed by", s: s&.weighed_by, r: r&.weighed_by, num: false, stripe: false %>
+        <%= render "compare_row", label: "Scale ID", s: s&.scale_id, r: r&.scale_id, num: false, stripe: true %>
+        <% if s&.notes.present? || r&.notes.present? %>
+          <%= render "compare_row", label: "Notes", s: s&.notes, r: r&.notes, num: false, stripe: false %>
+        <% end %>
+      </tbody>
+    </table>
+    <%= render VarianceStatusComponent.new(tag: @tag) %>
+  </div>
+
+  <div class="bg-card border border-border rounded mt-4 overflow-hidden">
+    <div class="bg-secondary/60 px-6 py-2.5 border-b border-border">
+      <h2 class="font-medium text-sm">Activity log</h2>
+    </div>
+    <%= render "shared/activity_table", events: @activity, show_bol: false %>
+  </div>
+</div>

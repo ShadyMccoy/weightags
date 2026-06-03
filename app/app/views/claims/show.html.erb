@@ -1,0 +1,65 @@
+<% content_for :title, "Review & claim — WeighTags" %>
+<% field = "#{field_class} w-full" %>
+
+<div class="py-8 px-6 max-w-4xl mx-auto">
+  <h1 class="text-2xl font-medium mb-1">Weigh tags shared with <%= @org.name %></h1>
+  <p class="text-sm text-muted-foreground mb-6">
+    Review the records addressed to you below. When you're ready, claim your organization — no password
+    needed just to look.
+  </p>
+
+  <div class="bg-card border border-border rounded-lg overflow-hidden mb-8">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-secondary/60 text-left border-b border-border">
+          <th class="<%= th_class %>">BOL</th>
+          <th class="<%= th_class %>">Ship date</th>
+          <th class="<%= th_class %>">Commodity</th>
+          <th class="<%= th_class %>">Partner</th>
+          <th class="<%= th_class(:right) %>">Net (lb)</th>
+          <th class="<%= th_class %>">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @tags.each do |tag| %>
+          <% partner = tag.counterparty_of(@org) %>
+          <tr class="border-b border-border">
+            <td class="px-4 py-2.5 font-mono"><%= tag.bol %></td>
+            <td class="px-4 py-2.5 tabular-nums"><%= fmt_short_date(tag.ship_date) %></td>
+            <td class="px-4 py-2.5"><%= tag.commodity %></td>
+            <td class="px-4 py-2.5"><%= partner.name %></td>
+            <td class="px-4 py-2.5 text-right font-mono tabular-nums"><%= lb(tag.weigh_for(partner)&.net) %></td>
+            <td class="px-4 py-2.5"><%= render StatusPillComponent.for_tag(tag) %></td>
+          </tr>
+        <% end %>
+        <% if @tags.empty? %>
+          <tr><td colspan="6" class="px-4 py-8 text-center text-muted-foreground">No weigh tags yet.</td></tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="max-w-md">
+    <h2 class="text-lg font-medium mb-3">Claim <%= @org.name %></h2>
+    <% if @user&.errors&.any? %>
+      <div class="mb-4 px-4 py-2.5 text-sm rounded-md border border-status-disputed/30 bg-status-disputed/5 text-status-disputed">
+        <%= @user.errors.full_messages.to_sentence %>
+      </div>
+    <% end %>
+    <%= form_with url: claim_path(params[:token]), method: :post, class: "space-y-4 bg-card border border-border rounded-lg p-6" do %>
+      <div>
+        <label class="block text-sm font-medium mb-1">Your name</label>
+        <%= text_field_tag :name, @user&.name, required: true, class: field %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Email</label>
+        <%= email_field_tag :email_address, @invite_email, required: true, class: field %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Set a password</label>
+        <%= password_field_tag :password, nil, required: true, class: field %>
+      </div>
+      <%= submit_tag "Claim organization", class: "w-full #{btn_class(:primary, size: :lg)}" %>
+    <% end %>
+  </div>
+</div>

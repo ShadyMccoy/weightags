@@ -1,0 +1,8 @@
+
+<% if Current.user.admin_of?(Current.org) && Current.org.sole_admin? %>
+  <div class="bg-status-review/10 border-b border-status-review/30 px-6 py-2 text-sm text-status-review">
+    You're the only admin in <%= Current.org.name %>.
+    <%= link_to "Add a backup admin", members_path, class: "underline font-medium" %>
+    so the organization isn't tied to a single account.
+  </div>
+<% end %>

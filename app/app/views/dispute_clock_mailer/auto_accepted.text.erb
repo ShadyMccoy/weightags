@@ -1,0 +1,9 @@
+The dispute window for weigh tag BOL <%= @tag.bol %> (<%= @tag.sender_org.name %> → <%= @tag.receiver_org.name %>) has closed.
+
+It was shown, notified on schedule, and went uncontested, so it is now recorded against the sender's values:
+
+  Net: <%= lb(@tag.canonical_net) if @tag.canonical_net %> lb
+
+This is a neutral, timestamped record — not a claim that anyone legally accepted. The full history is on the tag.
+
+View it: <%= tag_url(@tag) %>

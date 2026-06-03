@@ -1,0 +1,5 @@
+<h2 style="font-size:1.1em;margin:0 0 .4em"><%= @notification.title %></h2>
+<p><%= @notification.body %></p>
+<% if @notification.url.present? %>
+  <p><%= link_to "View it", @notification.url %></p>
+<% end %>

@@ -1,0 +1,34 @@
+<% content_for :title, "WeighTags — Commodity Weigh Tag Reconciliation" %>
+
+<section class="px-6 py-16 max-w-4xl mx-auto">
+  <div class="max-w-2xl">
+    <h1 class="text-4xl font-medium tracking-tight mb-4">
+      A neutral system of record for weigh-tag reconciliation.
+    </h1>
+    <p class="text-lg text-muted-foreground mb-8">
+      Growers and buyers both weigh the tag. WeighTags auto-pairs the tickets on
+      the BOL, shows them side by side with the difference in the middle, and keeps
+      a permanent record of who saw what and when — so a disagreement is one click,
+      not a phone call.
+    </p>
+    <div class="flex items-center gap-3">
+      <%= link_to "Get started", sign_up_path,
+            class: btn_class(:primary, size: :lg) %>
+      <%= link_to "Sign in", new_session_path,
+            class: "px-4 py-2.5 rounded-md border border-border" %>
+    </div>
+  </div>
+
+  <div class="grid sm:grid-cols-3 gap-4 mt-16">
+    <% [
+      ["Post once", "Upload a day's weighs by CSV or type them in at the scale house. Stop emailing spreadsheets."],
+      ["See the difference", "Sender on the left, receiver on the right, the delta in the center — the same view for both parties."],
+      ["Resolve on the record", "Accept, dispute, or propose a compromise. Every action is timestamped and append-only."]
+    ].each do |title, body| %>
+      <div class="bg-card border border-border rounded-lg p-5">
+        <div class="font-medium mb-1.5"><%= title %></div>
+        <p class="text-sm text-muted-foreground"><%= body %></p>
+      </div>
+    <% end %>
+  </div>
+</section>

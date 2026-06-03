@@ -1,0 +1,112 @@
+<% content_for :title, "Import preview — WeighTags" %>
+
+<div class="py-6 px-6 max-w-4xl mx-auto">
+  <div class="mb-4">
+    <%= link_to new_csv_import_path, class: "text-sm text-muted-foreground hover:text-foreground" do %>← Start over<% end %>
+  </div>
+  <h1 class="text-2xl font-medium mb-1">Import preview</h1>
+  <p class="text-sm text-muted-foreground mb-6">
+    <%= @side.capitalize %> weighs for partner <strong><%= @counterparty.name %></strong>.
+    Only the valid rows below will be committed — all or nothing.
+  </p>
+
+  <% if @import.parse_error %>
+    <div class="px-4 py-3 rounded-md border border-status-disputed/30 bg-status-disputed/5 text-status-disputed text-sm">
+      <%= @import.parse_error %>
+    </div>
+  <% elsif @import.missing_required.any? %>
+    <div class="px-4 py-3 rounded-md border border-status-disputed/30 bg-status-disputed/5 text-status-disputed text-sm">
+      Missing required column(s): <strong><%= @import.missing_required.join(", ") %></strong>.
+      Found headers: <%= @import.headers.join(", ") %>.
+    </div>
+  <% else %>
+    <div class="bg-card border border-border rounded-lg p-4 mb-4 text-sm">
+      <h2 class="font-medium mb-2">Detected column mapping</h2>
+      <div class="flex flex-wrap gap-2">
+        <% @import.mapping.each do |col, header| %>
+          <span class="px-2 py-1 rounded bg-secondary text-xs font-mono"><%= col %> ← <%= header %></span>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-2 gap-4 mb-4">
+      <div class="bg-card border border-border rounded-lg p-4">
+        <div class="text-xs text-muted-foreground mb-1">Will import</div>
+        <div class="text-2xl font-medium tabular-nums text-status-matched"><%= @import.valid_rows.size %></div>
+      </div>
+      <div class="bg-card border border-border rounded-lg p-4">
+        <div class="text-xs text-muted-foreground mb-1">Rejected</div>
+        <div class="text-2xl font-medium tabular-nums <%= 'text-status-disputed' if @import.invalid_rows.any? %>"><%= @import.invalid_rows.size %></div>
+      </div>
+    </div>
+
+    <% if @import.invalid_rows.any? %>
+      <div class="bg-card border border-border rounded-lg overflow-hidden mb-4">
+        <div class="bg-secondary/60 px-4 py-2.5 border-b border-border flex items-center justify-between">
+          <h2 class="font-medium text-sm">Rejected rows</h2>
+          <%= form_with url: csv_imports_path, method: :post, data: { turbo: false } do %>
+            <%= hidden_field_tag :csv_text, @csv_text %>
+            <%= hidden_field_tag :counterparty_org_id, @counterparty.id %>
+            <%= hidden_field_tag :side, @side %>
+            <%= hidden_field_tag :report, "1" %>
+            <%= submit_tag "Download error report (.csv)", class: "text-xs px-2 py-1 rounded border border-border cursor-pointer hover:bg-secondary" %>
+          <% end %>
+        </div>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-secondary/40 text-left border-b border-border">
+              <th class="px-4 py-2 text-xs font-medium text-muted-foreground">Line</th>
+              <th class="px-4 py-2 text-xs font-medium text-muted-foreground">BOL</th>
+              <th class="px-4 py-2 text-xs font-medium text-muted-foreground">Errors</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @import.invalid_rows.each do |row| %>
+              <tr class="border-b border-border">
+                <td class="px-4 py-2 font-mono tabular-nums"><%= row.line %></td>
+                <td class="px-4 py-2 font-mono"><%= row.raw.values_at(*@import.headers).compact.first %></td>
+                <td class="px-4 py-2 text-status-disputed"><%= row.errors.join("; ") %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    <% end %>
+
+    <% if @import.valid_rows.any? %>
+      <div class="bg-card border border-border rounded-lg overflow-hidden mb-4">
+        <div class="bg-secondary/60 px-4 py-2.5 border-b border-border">
+          <h2 class="font-medium text-sm">Valid rows (preview)</h2>
+        </div>
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-secondary/40 text-left border-b border-border">
+              <th class="px-4 py-2 text-xs font-medium text-muted-foreground">BOL</th>
+              <th class="px-4 py-2 text-xs font-medium text-muted-foreground">Commodity</th>
+              <th class="px-4 py-2 text-xs font-medium text-muted-foreground text-right">Net (lb)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @import.valid_rows.first(50).each do |row| %>
+              <tr class="border-b border-border">
+                <td class="px-4 py-2 font-mono"><%= row.attributes[:bol] %></td>
+                <td class="px-4 py-2"><%= row.attributes[:commodity] %></td>
+                <td class="px-4 py-2 text-right font-mono tabular-nums">
+                  <%= lb(row.attributes[:net] || (row.attributes[:gross].to_d - row.attributes[:tare].to_d)) %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <%= form_with url: commit_csv_imports_path, method: :post do %>
+        <%= hidden_field_tag :csv_text, @csv_text %>
+        <%= hidden_field_tag :counterparty_org_id, @counterparty.id %>
+        <%= hidden_field_tag :side, @side %>
+        <%= submit_tag "Commit #{@import.valid_rows.size} #{'row'.pluralize(@import.valid_rows.size)}",
+              class: btn_class(:primary, size: :lg) %>
+      <% end %>
+    <% end %>
+  <% end %>
+</div>

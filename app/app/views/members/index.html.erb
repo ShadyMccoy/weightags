@@ -1,0 +1,66 @@
+<% content_for :title, "Members — WeighTags" %>
+<% admin = Current.user.admin_of?(current_org) %>
+<% field = field_class %>
+
+<div class="py-6 px-6 max-w-3xl mx-auto">
+  <h1 class="text-2xl font-medium mb-1">Members</h1>
+  <p class="text-sm text-muted-foreground mb-2">People who can post and review weigh tags for <%= current_org.name %>.</p>
+  <p class="text-sm mb-6 flex gap-4">
+    <%= link_to "Domain verification", domain_path, class: "text-primary hover:underline" %>
+    <%= link_to "Admin recovery", admin_recoveries_path, class: "text-primary hover:underline" %>
+  </p>
+
+  <% if admin %>
+    <%= form_with url: members_path, method: :post,
+          class: "bg-card border border-border rounded-lg p-4 flex flex-wrap items-end gap-3 mb-6" do %>
+      <div class="flex-1 min-w-[200px]">
+        <label class="block text-xs text-muted-foreground mb-1">Invite by email</label>
+        <%= email_field_tag :email_address, nil, class: "#{field} w-full", placeholder: "colleague@company.com" %>
+      </div>
+      <div>
+        <label class="block text-xs text-muted-foreground mb-1">Role</label>
+        <%= select_tag :role, options_for_select([%w[Member member], %w[Admin admin]]), class: field %>
+      </div>
+      <%= submit_tag "Invite", class: btn_class(:primary, size: :md) %>
+    <% end %>
+  <% end %>
+
+  <div class="bg-card border border-border rounded-lg overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-secondary/60 text-left border-b border-border">
+          <th class="<%= th_class %>">Name</th>
+          <th class="<%= th_class %>">Email</th>
+          <th class="<%= th_class %>">Role</th>
+          <th class="<%= th_class %>">Status</th>
+          <% if admin %><th class="px-4 py-2"></th><% end %>
+        </tr>
+      </thead>
+      <tbody>
+        <% @memberships.each do |m| %>
+          <tr class="border-b border-border <%= 'opacity-60' unless m.active? %>">
+            <td class="px-4 py-2.5"><%= m.user.display_name %></td>
+            <td class="px-4 py-2.5 font-mono text-xs"><%= m.user.email_address %></td>
+            <td class="px-4 py-2.5"><%= m.role.titleize %></td>
+            <td class="px-4 py-2.5">
+              <% if m.active? %><span class="text-status-matched">Active</span>
+              <% else %><span class="text-muted-foreground">Ended <%= fmt_date(m.ended_at) %></span><% end %>
+            </td>
+            <% if admin %>
+              <td class="px-4 py-2.5 text-right whitespace-nowrap">
+                <% if m.active? %>
+                  <% target = m.admin? ? "member" : "admin" %>
+                  <%= button_to "Make #{target}", member_path(m), method: :patch, params: { role: target },
+                        class: "text-xs px-2 py-1 rounded border border-border hover:bg-secondary" %>
+                  <%= button_to "End", member_path(m), method: :delete,
+                        form: { data: { turbo_confirm: "End #{m.user.display_name}'s access?" } },
+                        class: "text-xs px-2 py-1 rounded border border-border hover:bg-secondary ml-1" %>
+                <% end %>
+              </td>
+            <% end %>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

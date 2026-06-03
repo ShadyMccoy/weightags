@@ -1,0 +1,23 @@
+
+<% orgs = Current.user.orgs.order(:name) %>
+<div class="relative" data-controller="dropdown">
+  <button type="button" data-action="dropdown#toggle"
+          class="flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-secondary text-sm">
+    <span class="font-medium"><%= Current.org.name %></span>
+    <% if orgs.size > 1 %>
+      <svg class="h-3.5 w-3.5 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+    <% end %>
+  </button>
+  <% if orgs.size > 1 %>
+    <div data-dropdown-target="menu" hidden
+         class="absolute right-0 mt-1 w-56 bg-card border border-border rounded-md shadow-sm py-1 z-20">
+      <% orgs.each do |org| %>
+        <%= button_to switch_org_path(org), method: :post,
+              class: "w-full text-left px-3 py-2 text-sm hover:bg-secondary #{'font-medium' if org.id == Current.org.id}" do %>
+          <%= org.name %>
+          <% if org.id == Current.org.id %><span class="text-xs text-muted-foreground">(current)</span><% end %>
+        <% end %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

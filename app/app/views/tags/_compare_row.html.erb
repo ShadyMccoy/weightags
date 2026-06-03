@@ -1,0 +1,11 @@
+
+<tr class="border-b border-border <%= 'bg-stripe' if stripe %>">
+  <td class="px-6 py-2.5 text-muted-foreground align-top"><%= label %></td>
+  <td class="px-6 py-2.5 text-right align-top <%= 'font-mono tabular-nums' if num %>">
+    <%= s.present? ? (num ? lb(s) : s) : "—" %>
+  </td>
+  <td class="px-6 py-2.5 text-center bg-secondary/40"></td>
+  <td class="px-6 py-2.5 text-right align-top <%= 'font-mono tabular-nums' if num %>">
+    <%= r.present? ? (num ? lb(r) : r) : "—" %>
+  </td>
+</tr>

@@ -1,0 +1,6 @@
+<% flash.each do |type, message| %>
+  <% tone = type.to_sym == :alert ? "border-status-disputed/30 bg-status-disputed/5 text-status-disputed" : "border-status-matched/30 bg-status-matched/5 text-status-matched" %>
+  <div class="mx-6 mt-4 px-4 py-2.5 text-sm rounded-md border <%= tone %>" role="alert">
+    <%= message %>
+  </div>
+<% end %>

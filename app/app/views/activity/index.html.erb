@@ -1,0 +1,19 @@
+<% content_for :title, "Activity — WeighTags" %>
+<% field = field_class(:filter) %>
+
+<div class="py-6 px-6 max-w-5xl mx-auto">
+  <h1 class="text-2xl font-medium mb-1">Activity</h1>
+  <p class="text-sm text-muted-foreground mb-6">A complete, append-only record of who did what, when — across every weigh tag.</p>
+
+  <%= form_with url: activity_index_path, method: :get, class: "flex items-center gap-3 mb-4" do %>
+    <%= select_tag :action_type,
+          options_for_select([["All events", ""]] + @action_types.map { |a| [activity_label(a), a] }, params[:action_type]),
+          class: field %>
+    <%= search_field_tag :q, params[:q], placeholder: "BOL…", class: field %>
+    <%= submit_tag "Filter", class: "px-3 py-1.5 text-sm rounded-md border border-border cursor-pointer" %>
+  <% end %>
+
+  <div class="bg-card border border-border rounded-lg overflow-hidden">
+    <%= render "shared/activity_table", events: @events, show_bol: true %>
+  </div>
+</div>

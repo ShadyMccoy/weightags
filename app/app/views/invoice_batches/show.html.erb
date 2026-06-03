@@ -1,0 +1,46 @@
+<% content_for :title, "Invoice #{@batch.external_invoice_number} — WeighTags" %>
+
+<div class="py-6 px-6 max-w-4xl mx-auto">
+  <div class="mb-3">
+    <%= link_to invoice_batches_path, class: "text-sm text-muted-foreground hover:text-foreground" do %>← Back to invoices<% end %>
+  </div>
+
+  <div class="bg-card border border-border rounded mb-4">
+    <div class="px-6 py-4 border-b border-border flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-mono">Invoice <%= @batch.external_invoice_number %></h1>
+        <p class="text-sm text-muted-foreground"><%= @batch.sender_org.name %> → <%= @batch.receiver_org.name %></p>
+      </div>
+      <%= link_to "View PDF", pdf_invoice_batch_path(@batch), class: "px-3 py-1.5 text-sm rounded-md border border-border" %>
+    </div>
+    <div class="px-6 py-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+      <div><div class="text-xs text-muted-foreground mb-0.5">Invoice date</div><div class="tabular-nums"><%= fmt_date(@batch.invoice_date) %></div></div>
+      <div><div class="text-xs text-muted-foreground mb-0.5">Weigh tags</div><div class="tabular-nums"><%= @batch.load_count %></div></div>
+      <div><div class="text-xs text-muted-foreground mb-0.5">Total net (lb)</div><div class="font-mono tabular-nums font-medium"><%= lb(@batch.total_net) %></div></div>
+      <div><div class="text-xs text-muted-foreground mb-0.5">Verification</div><div class="text-xs"><%= link_to "public page", verify_url(@batch.token), class: "text-status-invoiced underline" %></div></div>
+    </div>
+  </div>
+
+  <div class="bg-card border border-border rounded overflow-hidden">
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-secondary/60 text-left border-b border-border">
+          <th class="<%= th_class %>">BOL</th>
+          <th class="<%= th_class %>">Ship date</th>
+          <th class="<%= th_class %>">Commodity</th>
+          <th class="<%= th_class(:right) %>">Net (lb)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @batch.tags.order(:ship_date).each do |tag| %>
+          <tr class="border-b border-border">
+            <td class="px-4 py-2.5 font-mono"><%= link_to tag.bol, tag_path(tag), class: "text-primary hover:underline" %></td>
+            <td class="px-4 py-2.5 tabular-nums"><%= fmt_short_date(tag.ship_date) %></td>
+            <td class="px-4 py-2.5"><%= tag.commodity %></td>
+            <td class="px-4 py-2.5 text-right font-mono tabular-nums"><%= lb(tag.canonical_net || tag.sender_weigh&.net) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>

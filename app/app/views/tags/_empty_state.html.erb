@@ -1,0 +1,15 @@
+
+<div class="bg-card border border-border rounded-lg p-12 text-center">
+  <h2 class="text-lg font-medium mb-2">No weigh tags yet</h2>
+  <p class="text-sm text-muted-foreground max-w-md mx-auto mb-6">
+    Post your day's weighs and WeighTags will pair them with your partner's on the
+    BOL automatically. You can adopt this solo — your partner is pulled in when
+    they want to see the numbers.
+  </p>
+  <div class="flex items-center justify-center gap-3">
+    <%= link_to "Import a CSV", new_csv_import_path,
+          class: btn_class(:primary, size: :lg) %>
+    <%= link_to "Add a tag by hand", new_weigh_path,
+          class: "px-4 py-2.5 rounded-md border border-border" %>
+  </div>
+</div>

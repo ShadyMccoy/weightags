@@ -1,0 +1,43 @@
+<% content_for :title, "Domain — WeighTags" %>
+<% field = field_class %>
+<% org = current_org %>
+
+<div class="py-6 px-6 max-w-2xl mx-auto">
+  <h1 class="text-2xl font-medium mb-1">Domain verification</h1>
+  <p class="text-sm text-muted-foreground mb-6">
+    Verifying your domain lets colleagues on the same email domain recover admin access if needed —
+    the safeguard against an orphaned organization.
+  </p>
+
+  <div class="bg-card border border-border rounded-lg p-5 mb-4">
+    <%= form_with url: domain_path, method: :patch, class: "flex flex-wrap items-end gap-3" do %>
+      <div class="flex-1 min-w-[200px]">
+        <label class="block text-xs text-muted-foreground mb-1">Organization domain</label>
+        <%= text_field_tag :domain, org.domain, placeholder: "company.com", class: "#{field} w-full" %>
+      </div>
+      <div class="flex-1 min-w-[200px]">
+        <label class="block text-xs text-muted-foreground mb-1">Confirmation email (at that domain)</label>
+        <%= email_field_tag :confirm_email, nil, placeholder: "you@company.com", class: "#{field} w-full" %>
+      </div>
+      <%= submit_tag "Save & send", class: btn_class(:primary, size: :md) %>
+    <% end %>
+
+    <div class="mt-4 text-sm">
+      <% if org.domain_verified? %>
+        <span class="text-status-matched font-medium">✓ <%= org.domain %> is verified.</span>
+      <% elsif org.domain.present? %>
+        <span class="text-status-review">Not yet verified.</span>
+      <% end %>
+    </div>
+  </div>
+
+  <% if org.domain.present? && !org.domain_verified? %>
+    <div class="bg-card border border-border rounded-lg p-5 text-sm">
+      <h2 class="font-medium mb-2">Or verify via DNS</h2>
+      <p class="text-muted-foreground mb-2">Add this TXT record to <span class="font-mono"><%= org.domain %></span>, then check:</p>
+      <code class="block font-mono text-xs bg-secondary rounded p-3 break-all"><%= org.expected_txt_record %></code>
+      <%= button_to "Check DNS now", verify_dns_domain_path, method: :post,
+            class: "inline-block mt-3 px-3 py-1.5 rounded-md border border-border cursor-pointer" %>
+    </div>
+  <% end %>
+</div>

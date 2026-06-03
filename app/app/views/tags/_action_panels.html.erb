@@ -1,0 +1,63 @@
+<% my_tag = @tag.weigh_for(current_org) %>
+<% field = "#{field_class} w-full" %>
+
+<div data-reveal-target="panel" data-panel-name="dispute" hidden
+     class="bg-card border border-status-disputed/30 rounded-lg p-4 mt-3">
+  <h3 class="font-medium text-sm mb-3">File a dispute</h3>
+  <%= form_with url: dispute_tag_path(@tag), method: :post, class: "space-y-3" do %>
+    <div>
+      <label class="block text-xs text-muted-foreground mb-1">Reason</label>
+      <%= select_tag :reason, options_for_select([
+            "Weight variance", "Moisture discrepancy", "Wrong BOL / tag",
+            "Quality or grade", "Other"
+          ]), class: field %>
+    </div>
+    <div>
+      <label class="block text-xs text-muted-foreground mb-1">Notes</label>
+      <%= text_area_tag :notes, nil, rows: 2, class: field, placeholder: "What's contested, and why." %>
+    </div>
+    <%= submit_tag "Submit dispute", class: "px-3 py-1.5 text-sm rounded-md bg-status-disputed text-white cursor-pointer" %>
+  <% end %>
+</div>
+
+<div data-reveal-target="panel" data-panel-name="compromise" hidden
+     class="bg-card border border-border rounded-lg p-4 mt-3">
+  <h3 class="font-medium text-sm mb-3">Propose a compromise</h3>
+  <%= form_with url: compromise_tag_path(@tag), method: :post, class: "space-y-3" do %>
+    <div class="grid grid-cols-3 gap-3">
+      <div><label class="block text-xs text-muted-foreground mb-1">Gross</label><%= number_field_tag :gross, @tag.canonical_gross, step: :any, class: field %></div>
+      <div><label class="block text-xs text-muted-foreground mb-1">Tare</label><%= number_field_tag :tare, @tag.canonical_tare, step: :any, class: field %></div>
+      <div><label class="block text-xs text-muted-foreground mb-1">Net</label><%= number_field_tag :net, @tag.canonical_net, step: :any, class: field %></div>
+    </div>
+    <%= text_area_tag :note, nil, rows: 2, class: field, placeholder: "Optional note" %>
+    <%= submit_tag "Propose compromise", class: btn_class(:primary) %>
+  <% end %>
+</div>
+
+<% if my_tag %>
+  <div data-reveal-target="panel" data-panel-name="edit" hidden
+       class="bg-card border border-border rounded-lg p-4 mt-3">
+    <h3 class="font-medium text-sm mb-3">Edit my weigh <span class="text-xs text-muted-foreground">(BOL <%= @tag.bol %>)</span></h3>
+    <%= form_with url: weigh_tag_path(@tag), method: :patch, class: "space-y-3" do %>
+      <div class="grid grid-cols-3 gap-3">
+        <div><label class="block text-xs text-muted-foreground mb-1">Gross</label><%= number_field_tag :gross, my_tag.gross, step: :any, class: field %></div>
+        <div><label class="block text-xs text-muted-foreground mb-1">Tare</label><%= number_field_tag :tare, my_tag.tare, step: :any, class: field %></div>
+        <div><label class="block text-xs text-muted-foreground mb-1">Net</label><%= number_field_tag :net, my_tag.net, step: :any, class: field %></div>
+      </div>
+      <div>
+        <label class="block text-xs text-muted-foreground mb-1">Reason for the edit (required)</label>
+        <%= text_field_tag :reason, nil, required: true, class: field, placeholder: "e.g. Re-keyed from the printed ticket." %>
+      </div>
+      <%= submit_tag "Save edit", class: btn_class(:primary) %>
+    <% end %>
+  </div>
+<% end %>
+
+<div data-reveal-target="panel" data-panel-name="note" hidden
+     class="bg-card border border-border rounded-lg p-4 mt-3">
+  <h3 class="font-medium text-sm mb-3">Add a note</h3>
+  <%= form_with url: note_tag_path(@tag), method: :post, class: "space-y-3" do %>
+    <%= text_area_tag :body, nil, rows: 2, required: true, class: field %>
+    <%= submit_tag "Add note", class: btn_class(:primary) %>
+  <% end %>
+</div>

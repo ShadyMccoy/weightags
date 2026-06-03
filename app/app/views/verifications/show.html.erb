@@ -1,0 +1,40 @@
+<% content_for :title, "Verify invoice #{@batch.external_invoice_number} — WeighTags" %>
+
+<div class="py-12 px-6 max-w-3xl mx-auto">
+  <div class="bg-card border border-border rounded-lg overflow-hidden">
+    <div class="px-6 py-5 border-b border-border">
+      <div class="text-xs text-muted-foreground mb-1">WeighTags record verification</div>
+      <h1 class="text-2xl font-medium">Invoice <%= @batch.external_invoice_number %></h1>
+      <p class="text-sm text-muted-foreground mt-1">
+        <%= @batch.sender_org.name %> → <%= @batch.receiver_org.name %>
+        <% if @batch.invoice_date %> · <%= @batch.invoice_date.strftime("%B %-d, %Y") %><% end %>
+      </p>
+    </div>
+    <div class="px-6 py-4 grid grid-cols-3 gap-4 text-sm border-b border-border">
+      <div><div class="text-xs text-muted-foreground mb-0.5">Weigh tags</div><div class="tabular-nums font-medium"><%= @batch.load_count %></div></div>
+      <div><div class="text-xs text-muted-foreground mb-0.5">Total net (lb)</div><div class="font-mono tabular-nums font-medium"><%= lb(@batch.total_net) %></div></div>
+      <div><div class="text-xs text-muted-foreground mb-0.5">Recorded</div><div class="tabular-nums"><%= fmt_date(@batch.created_at) %></div></div>
+    </div>
+    <table class="w-full text-sm">
+      <thead>
+        <tr class="bg-secondary/40 text-left border-b border-border">
+          <th class="px-6 py-2 font-medium text-xs text-muted-foreground">BOL</th>
+          <th class="px-6 py-2 font-medium text-xs text-muted-foreground">Ship date</th>
+          <th class="px-6 py-2 font-medium text-xs text-muted-foreground text-right">Net (lb)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @batch.tags.order(:ship_date).each do |tag| %>
+          <tr class="border-b border-border">
+            <td class="px-6 py-2.5 font-mono"><%= tag.bol %></td>
+            <td class="px-6 py-2.5 tabular-nums"><%= fmt_short_date(tag.ship_date) %></td>
+            <td class="px-6 py-2.5 text-right font-mono tabular-nums"><%= lb(tag.canonical_net || tag.sender_weigh&.net) %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+    <div class="px-6 py-3 text-xs text-muted-foreground border-t border-border">
+      A neutral record of reconciled weigh tags. WeighTags is not a party to the underlying commercial agreement.
+    </div>
+  </div>
+</div>

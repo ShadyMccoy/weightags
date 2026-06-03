@@ -1,0 +1,35 @@
+
+<div class="flex items-center gap-2 flex-wrap">
+  <% if @tag.can_accept_compromise? %>
+    <%= button_to "Accept compromise", accept_compromise_tag_path(@tag),
+          class: "px-3 py-1.5 text-sm rounded-md bg-status-resolved text-white" %>
+  <% elsif @tag.can_accept? %>
+    <%= button_to "Accept partner's numbers", accept_tag_path(@tag),
+          class: btn_class %>
+  <% end %>
+
+  <% if @tag.can_dispute? %>
+    <button type="button" data-action="reveal#toggle" data-reveal-panel-param="dispute"
+            class=btn_class(:primary)>
+      Dispute
+    </button>
+  <% end %>
+
+  <% if @tag.can_edit_tag?(current_org) %>
+    <button type="button" data-action="reveal#toggle" data-reveal-panel-param="edit"
+            class=btn_class>Edit my weigh</button>
+  <% end %>
+  <% if @tag.can_propose_compromise? %>
+    <button type="button" data-action="reveal#toggle" data-reveal-panel-param="compromise"
+            class=btn_class>Propose compromise</button>
+  <% end %>
+
+  <button type="button" data-action="reveal#toggle" data-reveal-panel-param="note"
+          class=btn_class>Add note</button>
+
+  <% if @tag.both_sided? && !@tag.final? && @tag.weigh_for(current_org) %>
+    <%= button_to "Separate my weigh", split_tag_path(@tag),
+          form: { data: { turbo_confirm: "Separate your weigh onto its own shipment? You can merge it back." } },
+          class: "#{btn_class} text-muted-foreground" %>
+  <% end %>
+</div>

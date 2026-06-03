@@ -387,7 +387,14 @@ Canonical screens not yet drafted, in roughly the order they're needed:
 
 ## Data model
 
-The model separates *who acts* from *what persists*. Five distinct entities, each with its own lifecycle.
+The model separates *who acts* from *what persists*, and a *measurement* from the *shipment* it
+describes. Core entities, each with its own lifecycle.
+
+**Naming (v12 — supersedes earlier drafts).** What earlier drafts called a *Load* is now the **Tag**:
+the shipment itself, identified by the BOL that travels from A to B. What earlier drafts called a *Tag*
+is now the **Weigh**: a single weighing. The user-facing term **"weigh tag"** is a Tag together with its
+Weighs (literally Weigh + Tag). This dissolves the old internal-vs-external naming split — the model
+word now *is* "tag."
 
 ### User
 
@@ -401,55 +408,116 @@ A persistent business entity (Sycamore Ridge Farms, Pacific Hulling Co.). Holds 
 
 Links a User to an Org with a role (admin, member) and a time range (joined date; optional end date if the user has departed). Audit attribution references the user directly; role is *not* embedded in audit entries — it lives here, queryable when needed, but historical events stand on their own.
 
-### Tag
+### Weigh
 
-What each scale recorded. Each tag belongs to one Org and carries that party's measurements (gross, tare, net, moisture, grade), the metadata identifying the load (BOL, date, truck, driver, partner), and provenance for trusting that specific recording: who weighed it (`weighed_by`), which scale was used (`scale_id`), when the weighing occurred (`weighed_at` timestamp, distinct from the load-level ship date), and free-text notes from the operator (e.g., *"spillage observed during unload"* or *"scale recalibrated this morning"*). Tags are facts; immutable except through a deliberate edit action, which preserves the prior values in the audit log.
+What a scale recorded — one weighing event, and the **ground truth** of the system. A Weigh belongs to
+one Org (the party that recorded it) and to exactly one Tag (the shipment). It carries that party's
+measurements (gross, tare, net, moisture, grade); provenance for trusting that specific recording — who
+weighed it (`weighed_by`), which scale (`scale_id`), when (`weighed_at`, distinct from the shipment's
+ship date), and free-text notes (e.g. *"spillage observed during unload"*); a `role` (origin/sender,
+destination/receiver, or third-party); and **`recorded_ref`** — the shipment reference *as that party
+keyed it*. `recorded_ref` is never overwritten, so a typo'd or differing reference (PO vs BOL vs
+Shipment #) is preserved as evidence, not lost.
 
-The provenance fields are not optional in spirit — they are the foundation of the audit trail. A disagreement that surfaces months later is resolved by reading them: which operator, which scale, what context. The UI presents them per-side in the comparison table so both sides' provenance is legible at a glance.
+Weighs are permanent, owned attestations — immutable except through a deliberate edit that preserves the
+prior values in the audit log. A Weigh always belongs to exactly one Tag; it is never orphaned (a move
+*reassigns* it). The provenance fields are the foundation of the audit trail: a disagreement surfacing
+months later is resolved by reading them. The UI presents them per-side in the comparison table.
 
-### Load
+### Tag (the shipment)
 
-The canonical, agreed-upon record for a single physical truckload. A Load joins one or two Tags (one from each side, when both have posted) and carries the agreed values that downstream consumers use.
+The canonical record of one physical truckload — the BOL/shipment identity plus the agreed values
+downstream consumers use. **A Tag is a thin projection over its Weighs:** it groups the Weighs asserted
+to be the same shipment and folds them (together with the action log) into a current state and canonical
+values.
 
-- In a clean match, Load canonical values equal both tags (because they agree).
-- In acceptance, Load canonical values equal whichever tag was accepted.
-- In compromise, Load canonical values are a negotiated value that may match neither tag.
-- In auto-accept (timeout), Load canonical values default to the sender's tag.
+- clean match → canonical equals both (they agree; stored as the sender's weigh)
+- acceptance → canonical equals the accepted weigh
+- compromise → canonical is a negotiated value matching neither weigh
+- auto-accept (timeout) → canonical defaults to the sender's weigh
 
-Both tags are preserved exactly as recorded. The Load records the agreement; the tags record the measurement. User-facing language is "weigh tag" — Load is internal terminology.
+A Tag normally has two Weighs (origin + destination) but may have **more** — e.g. a third-party
+verification weigh; the UI shows two primary columns and renders extras as additional rows. **Identity
+is the shipment, not the BOL string:** the BOL is a fallible *label* (each Weigh keeps its own
+`recorded_ref`); the Tag carries a canonical reference plus any known aliases. **A Tag is
+garbage-collected when it has no Weighs** — if its last Weigh is moved away, the husk is discarded while
+the real facts (the Weighs, and the audit events) persist. The agreement lives on the Tag; the
+measurements live on the Weighs.
+
+### Shipment identity, ingest & reconciliation
+
+A Weigh reaches a Tag by one of three ingest paths:
+
+1. **Weigh-in against an existing Tag (preferred).** Because the sender usually posts first, the
+   receiver pulls up the partner's open shipments and appends their weigh to the matching one — no
+   re-keyed BOL, no typo, no pairing. Identity is shared from the start; this is the cooperative happy
+   path and it makes reconciliation the exception, not the rule.
+2. **Direct entry / CSV.** When a party posts blind, the system mints or looks up a Tag and **auto-pairs
+   on exact BOL**.
+3. **When references differ** (typo, or different reference types), two Tags exist that are really one.
+   Reconciliation closes the gap: exact **auto-pair**; **fuzzy match** (Levenshtein + date/truck/weight
+   corroboration) → a suggestion; and **manual merge / split**. Every such operation is just "point this
+   Weigh at that Tag": merge re-homes weighs and GCs the emptied husk; split mints a Tag and moves
+   weighs; all are reversible and audited.
+
+### Governance of shipment identity
+
+Optimistic and symmetric — the platform **records and notifies; it does not gatekeep**. Either
+**participant** (never an outsider; you may touch only your *own* Weigh) may weigh-in, relabel,
+link/merge, or split. Safety comes from **reversibility + attribution + notification**, not permission
+walls: every identity operation is an audited event, notifies the counterparty, and has an inverse.
+**Mutual confirmation is required only when an operation would alter a *settled* record** — a resolved
+or invoiced Tag — which must be reopened/un-invoiced deliberately first. An open-tag fuzzy match needs a
+**single confirm + notice**, not mutual confirmation: the cooperative path stays low-friction (the
+wedge), and the careful path is reserved for where money is on the line. People reorganizing weigh tags
+are trying to help; the audit log and the undo make that safe to assume.
 
 ### Invoice batch
 
 A grouping of closed weigh tags marked as invoiced under a single external invoice number. Carries: external invoice number, invoice date, sender org, recipient org, optional notes, list of tag IDs (each closed tag belongs to at most one batch), creator (which user marked it), creation timestamp, optional PDF artifact. The platform does not generate the invoice or know its monetary total — only the bridge between the reconciled tags and the external invoice.
 
-### Load states
+### Tag states
+
+A Tag's state is part of the projection it folds from its Weighs plus the action log.
 
 | State | Meaning |
 |---|---|
-| **Left-only / Right-only** | One party has posted; partner hasn't. Dispute clock hasn't started. |
-| **Double-sided · ready to close** | Both posted; tags match (or within tolerance). One-click acceptance. |
-| **Double-sided · review** | Both posted; deltas above tolerance. Needs action. |
+| **One-sided** | Only one Weigh posted; partner hasn't. Dispute clock hasn't started. |
+| **Double-sided · ready to close** | Both Weighs posted; within tolerance. One-click acceptance. |
+| **Double-sided · review** | Both Weighs posted; deltas above tolerance. Needs action. |
 | **Disputed** | One party has filed a structured dispute. Clock paused; partner must respond. |
 | **Compromise proposed** | A negotiated value has been proposed; awaiting partner acceptance. |
-| **Re-review** | One party has edited their tag after partner saw it; partner reviews again. |
+| **Re-review** | One party has edited their Weigh after partner saw it; partner reviews again. |
 | **Closed** | Resolved by acceptance (manual or auto), compromise, or matched values. Carries the resolution provenance. |
-| **Closed · invoiced** | A closed weigh tag linked to an invoice batch. Filterable separately from *closed, not yet invoiced*. |
+| **Closed · invoiced** | A closed Tag linked to an invoice batch. Filterable separately from *closed, not yet invoiced*. |
 
 ### Audit log
 
-Append-only. Each entry references the actor (user) and the action (with relevant context), timestamped. Role is *not* embedded — entries say *"Mary Lin disputed BOL 10849"* not *"Mary Lin (admin at Pacific Hulling) disputed BOL 10849."* Membership/role context, if ever needed, is reconstructable from the membership data at the time. Historical facts stay true: a user's past actions remain attributed to them even after they leave their org.
+Append-only and **immutable at the database level** (a trigger rejects every `UPDATE`/`DELETE`). Each
+entry references the actor (user) and the action, timestamped. Role is *not* embedded — entries say
+*"Mary Lin disputed BOL 10849"* not *"Mary Lin (admin at Pacific Hulling) disputed BOL 10849."* It
+**outlives the projection**: events carry a denormalized BOL, so when a husk Tag is garbage-collected its
+events survive (e.g. *"merged 1O849 into 10849"*). Historical facts stay true: a user's past actions
+remain attributed to them even after they leave their org — which is why the audit association must
+*never* cascade-destroy events when a Tag is GC'd.
 
 ## Key workflows
 
-1. Tag submission via CSV in defined schema, or direct entry through a scale-house form with autocomplete pre-fill from recent entries and save-and-add-another for steady-stream operators (manual single-entry as fallback for either path)
-2. Auto-pair on BOL into a shared Load
-3. Smart pairing for fuzzy BOL matches (Levenshtein + date/truck/weight corroboration), with mutual confirmation by both parties
-4. Shared diff view on Load detail (sender-left / receiver-right) with a centered delta column showing both absolute and percentage variance, a *Variance Status* callout below the comparison table (*Within tolerance* in green or *Exceeds tolerance* in amber, with the configured threshold), and an Activity Log table at the bottom carrying timestamp, action, details, and actor for every state transition
-5. Per-side actions: Accept, Dispute (with structured reason), Edit (own tag, requires reason), Propose Compromise, Add note
-6. Dispute clock: starts when both sides have posted; default-accept at sender's tag values after N days
-7. Ghost-account invite: tags addressed to an email create a placeholder Org. The invitee claims it via magic link, becoming the first admin of the Org. Onboarding nudge prompts them to invite a colleague.
-8. Bulk action: select closed weigh tags and mark as invoiced with an external invoice number; download printable PDF summary
-9. Search, filter, aggregate, and export across historical weigh tags (including by invoice number)
+1. Weigh submission — **weigh-in against the partner's existing Tag** (preferred: select the inbound
+   shipment, append your weigh; no re-keyed BOL), CSV in the defined schema, or direct entry through a
+   scale-house form (autocomplete pre-fill, save-and-add-another; manual single-entry fallback)
+2. Auto-pair on BOL into a shared Tag (a Tag groups the Weighs of one shipment)
+3. Reconciliation for differing references: fuzzy match (Levenshtein + date/truck/weight corroboration)
+   → single-confirm-plus-notice on open Tags; manual merge / split, both reversible and audited
+4. Shared diff view on Tag detail (sender-left / receiver-right) with a centered delta column (absolute +
+   percentage), a *Variance Status* callout, and an Activity Log table for every state transition
+5. Per-side actions: Accept, Dispute (structured reason), Edit (own weigh, requires reason), Propose
+   Compromise, Add note
+6. Dispute clock: starts when both sides have posted; default-accept at the sender's weigh values after N days
+7. Ghost-account invite: weighs addressed to an email create a placeholder Org. The invitee claims it via
+   magic link, becoming the first admin. Onboarding nudge prompts them to invite a colleague.
+8. Bulk action: select closed Tags and mark as invoiced with an external invoice number; printable PDF summary
+9. Search, filter, aggregate, and export across historical Tags (including by invoice number)
 10. Admin management: invite users to an Org, promote/demote roles, end memberships, verify Org domain
 
 ## Architecture
@@ -470,7 +538,10 @@ Append-only. Each entry references the actor (user) and the action (with relevan
 
 - **Append-only audit log.** Every state transition writes an immutable event, enforced at the DB level with triggers and constraints, not in application code that can drift. References actor (user) and action (with relevant entity IDs); role is not embedded.
 
-- **Tables: `users`, `orgs`, `memberships`, `tags`, `loads`, `invoice_batches`, `audit_events`.** Plus supporting tables (partners, settings, attachments). Rails' pluralized table names map onto these directly. Clean separation of who-is-who from what-happened.
+- **Tables: `users`, `orgs`, `memberships`, `tags` (shipments), `weighs` (measurements),
+  `invoice_batches`, `audit_events`.** Plus supporting tables (`partnerships`, `pairing_suggestions`,
+  `notifications`, `operational_alerts`). `weighs.tag_id` points each measurement at its shipment; a Tag
+  is GC'd when it has no weighs. Clean separation of who-is-who, what-was-measured, and what-happened.
 
 - **PDF rendering.** For invoice batch summaries and audit-log exports. **Grover** (headless Chrome via Puppeteer) rendering an ERB/ViewComponent template — so the PDF and the on-screen artifact share one template — or **Prawn** if we want a pure-Ruby, no-Chrome dependency. Decided per artifact; Grover is the default for anything that should match a styled page.
 

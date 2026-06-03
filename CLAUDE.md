@@ -8,8 +8,24 @@ Record them in the tracked docs below.**
 
 WeighTags — weigh-tag reconciliation between commodity growers and buyers. A neutral, **multiplayer**
 system of record that auto-pairs tags on BOL, surfaces discrepancies in a shared diff view, and
-resolves disputes on a deterministic clock. Currently in **charter phase** — no app scaffolded yet
-(`app/` holds a placeholder `hello.rb`).
+resolves disputes on a deterministic clock.
+
+**Status:** the Rails 8 app in [`app/`](app/) implements the **full roadmap** — Foundation (G0) and
+Waves A–D, every feature gated with tests (model/service + integration + real-browser system; money-adjacent
+paths covered), Brakeman clean, deployable via Kamal. See [`app/README.md`](app/README.md) for the per-feature map.
+Post-launch hypothesis branches (analytics, settlement expansion) remain, as designed, signal-gated.
+
+**Ontology (v12, implemented).** The shipment (BOL identity) is the **Tag** (was *Load*); a single
+weighing is the **Weigh** (was *Tag*), owned by the party that recorded it. A Tag is a thin projection
+over its Weighs (state + canonical via `Tag#reproject`, canonical via `Tag#adopt_canonical_from`) and is
+discarded when emptied — by the merge that empties it (explicit/local, *not* a hidden callback; "GC" is
+just the metaphor). The audit log is immutable and outlives the husk (the Tag→audit association
+deliberately has no `dependent:`). Reconciliation is auto-pair / fuzzy-suggest / **manual merge + split**
+(reversible, audited), and the **weigh-in-against-the-partner's-Tag** ingest path makes identity
+resolution the exception. Per-side actions route through one `Tags::Actions#transition` funnel
+(mutate→audit→broadcast→notify). Governance is optimistic and symmetric (reversibility + audit + notice;
+mutual confirm only on settled records). **Canonical spec:** [`docs/charter.md`](docs/charter.md) →
+*Data model* and [`docs/access-model.md`](docs/access-model.md).
 
 ## Source of truth — read these first
 

@@ -1,0 +1,20 @@
+
+<% field = "#{field_class} w-full" %>
+<div class="grid sm:grid-cols-2 gap-4">
+  <div>
+    <label class="block text-sm font-medium mb-1">Partner</label>
+    <% if partners.any? %>
+      <%= select_tag :counterparty_org_id,
+            options_from_collection_for_select(partners, :id, :name, params[:counterparty_org_id]),
+            include_blank: "— select a partner —", class: field %>
+      <div class="text-xs text-muted-foreground mt-1">or add a new partner below</div>
+    <% end %>
+    <%= text_field_tag :new_partner_name, nil, placeholder: "New partner name", class: "#{field} mt-1" %>
+    <%= email_field_tag :new_partner_email, nil, placeholder: "New partner email (optional — sends an invite)", class: "#{field} mt-1" %>
+  </div>
+  <div>
+    <label class="block text-sm font-medium mb-1">Your side</label>
+    <%= select_tag :side, options_for_select([["Sender (you shipped)", "sender"], ["Receiver (you received)", "receiver"]], params[:side] || "sender"), class: field %>
+    <div class="text-xs text-muted-foreground mt-1">Goods flow sender → receiver, always left to right.</div>
+  </div>
+</div>

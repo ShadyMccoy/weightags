@@ -1,0 +1,16 @@
+<p>
+  The dispute window for weigh tag <strong>BOL <%= @tag.bol %></strong>
+  (<%= @tag.sender_org.name %> → <%= @tag.receiver_org.name %>) has closed.
+</p>
+<p>
+  It was shown, notified on schedule, and went uncontested, so it is now recorded against the
+  sender's values:
+</p>
+<p style="font-size:1.1em">
+  Net: <strong><%= lb(@tag.canonical_net) if @tag.canonical_net %> lb</strong>
+</p>
+<p>
+  This is a neutral, timestamped record — not a claim that anyone legally accepted. The full history
+  is on the tag.
+</p>
+<p><%= link_to "View the weigh tag", tag_url(@tag) %></p>

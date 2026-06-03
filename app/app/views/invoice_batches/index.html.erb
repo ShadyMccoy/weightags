@@ -1,0 +1,46 @@
+<% content_for :title, "Invoices — WeighTags" %>
+
+<div class="py-6 px-6 max-w-4xl mx-auto">
+  <div class="mb-6 flex items-start justify-between">
+    <div>
+      <h1 class="text-2xl font-medium mb-1">Invoice batches</h1>
+      <p class="text-sm text-muted-foreground">Reconciled weigh tags linked to your external invoices.</p>
+    </div>
+    <%= link_to "Mark invoiced", new_invoice_batch_path, class: btn_class(:primary, size: :md) %>
+  </div>
+
+  <% if @batches.none? %>
+    <div class="bg-card border border-border rounded-lg p-10 text-center text-sm text-muted-foreground">
+      No invoice batches yet. Mark closed weigh tags as invoiced to create one.
+    </div>
+  <% else %>
+    <div class="bg-card border border-border rounded-lg overflow-hidden">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="bg-secondary/60 text-left border-b border-border">
+            <th class="<%= th_class %>">Invoice #</th>
+            <th class="<%= th_class %>">Date</th>
+            <th class="<%= th_class %>">Sender</th>
+            <th class="<%= th_class %>">Receiver</th>
+            <th class="<%= th_class(:right) %>">Weighs</th>
+            <th class="<%= th_class(:right) %>">Net (lb)</th>
+            <th class="px-4 py-2"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <% @batches.each do |batch| %>
+            <tr class="border-b border-border">
+              <td class="px-4 py-2.5 font-mono"><%= link_to batch.external_invoice_number, invoice_batch_path(batch), class: "text-primary hover:underline" %></td>
+              <td class="px-4 py-2.5 tabular-nums"><%= fmt_short_date(batch.invoice_date) %></td>
+              <td class="px-4 py-2.5"><%= batch.sender_org.name %></td>
+              <td class="px-4 py-2.5"><%= batch.receiver_org.name %></td>
+              <td class="px-4 py-2.5 text-right tabular-nums"><%= batch.load_count %></td>
+              <td class="px-4 py-2.5 text-right font-mono tabular-nums"><%= lb(batch.total_net) %></td>
+              <td class="px-4 py-2.5 text-right"><%= link_to "PDF", pdf_invoice_batch_path(batch), class: "text-xs px-2 py-1 rounded border border-border" %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  <% end %>
+</div>

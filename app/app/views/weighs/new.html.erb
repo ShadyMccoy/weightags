@@ -1,0 +1,122 @@
+<% content_for :title, "Add a weigh — WeighTags" %>
+<% field = "#{field_class} w-full" %>
+
+<div class="py-6 px-6 max-w-3xl mx-auto">
+  <div class="mb-4">
+    <%= link_to tags_path, class: "text-sm text-muted-foreground hover:text-foreground" do %>← Back to weigh tags<% end %>
+  </div>
+  <h1 class="text-2xl font-medium mb-1">Add a weigh</h1>
+  <p class="text-sm text-muted-foreground mb-6">
+    Weigh in against a shipment your partner already posted (no BOL to re-key), or
+    enter a new one. Save and add another to keep going — common fields carry over.
+  </p>
+
+  <% if @into.nil? && @awaiting.any? %>
+    <div class="bg-card border border-border rounded-lg mb-6">
+      <div class="px-4 py-2.5 border-b border-border text-sm font-medium">Awaiting your weigh</div>
+      <div class="divide-y divide-border">
+        <% @awaiting.each do |t| %>
+          <div class="px-4 py-2.5 flex items-center justify-between text-sm">
+            <span><span class="font-mono"><%= t.bol %></span> · <%= t.counterparty_of(current_org).name %><%= " · #{t.commodity}" if t.commodity %></span>
+            <%= link_to "Weigh in", new_weigh_path(tag_id: t.id),
+                  class: "px-2 py-1 rounded border border-border hover:bg-secondary text-xs" %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%= render "shared/errors", model: @weigh %>
+
+  <%= form_with url: weighs_path, method: :post, class: "space-y-5 bg-card border border-border rounded-lg p-6" do %>
+    <% if @into %>
+      <%= hidden_field_tag :tag_id, @into.id %>
+      <div class="bg-secondary/40 border border-border rounded-md px-4 py-3 text-sm">
+        Weighing in against <span class="font-medium"><%= @into.counterparty_of(current_org).name %></span>'s
+        shipment <span class="font-mono"><%= @into.bol %></span> — your side: <strong><%= @into.side_of(current_org) %></strong>.
+      </div>
+    <% else %>
+      <%= render "shared/partner_picker", partners: @partners %>
+    <% end %>
+
+    <div class="grid sm:grid-cols-3 gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">BOL number</label>
+        <%= text_field_tag :bol, @weigh.bol, required: true, readonly: @into.present?,
+              class: "#{field}#{' bg-secondary/50' if @into}" %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Ship date</label>
+        <%= date_field_tag :ship_date, @weigh.ship_date, class: field %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Commodity</label>
+        <%= text_field_tag :commodity, @weigh.commodity, class: field %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Truck</label>
+        <%= text_field_tag :truck, @weigh.truck, list: "recent-trucks", class: field %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Driver</label>
+        <%= text_field_tag :driver, @weigh.driver, list: "recent-drivers", class: field %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Scale ID</label>
+        <%= text_field_tag :scale_id, @weigh.scale_id, class: field %>
+      </div>
+    </div>
+
+    <div class="grid sm:grid-cols-4 gap-4">
+      <div>
+        <label class="block text-sm font-medium mb-1">Gross (lb)</label>
+        <%= number_field_tag :gross, @weigh.gross, step: :any, class: field %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Tare (lb)</label>
+        <%= number_field_tag :tare, @weigh.tare, step: :any, class: field %>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Net (lb)</label>
+        <%= number_field_tag :net, @weigh.net, step: :any, class: field %>
+        <div class="text-xs text-muted-foreground mt-1">Auto-derives from gross − tare.</div>
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-1">Moisture (%)</label>
+        <%= number_field_tag :moisture, @weigh.moisture, step: :any, class: field %>
+      </div>
+    </div>
+
+    <div>
+      <label class="block text-sm font-medium mb-1">Weighed by</label>
+      <%= text_field_tag :weighed_by, @weigh.weighed_by, class: field %>
+    </div>
+    <div>
+      <label class="block text-sm font-medium mb-1">Notes</label>
+      <%= text_area_tag :notes, @weigh.notes, rows: 2, class: field, placeholder: "e.g. Spillage observed during unload." %>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <%= submit_tag "Save and add another", class: btn_class(:primary, size: :lg) %>
+      <%= link_to "Cancel", tags_path, class: "text-sm text-muted-foreground hover:text-foreground" %>
+    </div>
+  <% end %>
+
+  <datalist id="recent-trucks"><% @last.map(&:truck).compact.uniq.each { |t| %><option value="<%= t %>"></option><% } %></datalist>
+  <datalist id="recent-drivers"><% @last.map(&:driver).compact.uniq.each { |d| %><option value="<%= d %>"></option><% } %></datalist>
+
+  <% if @last.any? %>
+    <div class="mt-6">
+      <h2 class="text-sm font-medium mb-2 text-muted-foreground">Recent entries</h2>
+      <div class="bg-card border border-border rounded-lg divide-y divide-border text-sm">
+        <% @last.each do |t| %>
+          <div class="px-4 py-2 flex items-center justify-between">
+            <span class="font-mono"><%= t.bol %></span>
+            <span class="text-muted-foreground"><%= t.commodity %> · <%= t.truck %></span>
+            <span class="font-mono tabular-nums"><%= lb(t.net) if t.net %> lb</span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+</div>

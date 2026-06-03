@@ -1,0 +1,63 @@
+<% content_for :title, "Mark invoiced — WeighTags" %>
+<% field = field_class %>
+
+<div class="py-6 px-6 max-w-4xl mx-auto" data-controller="checkall">
+  <div class="mb-4">
+    <%= link_to tags_path, class: "text-sm text-muted-foreground hover:text-foreground" do %>← Back to weigh tags<% end %>
+  </div>
+  <h1 class="text-2xl font-medium mb-1">Mark weigh tags as invoiced</h1>
+  <p class="text-sm text-muted-foreground mb-6">
+    Select closed weigh tags you've billed and record the external invoice number.
+    WeighTags tracks the bridge to your invoice — your partner can then verify by that number.
+  </p>
+
+  <% if @tags.none? %>
+    <div class="bg-card border border-border rounded-lg p-10 text-center">
+      <p class="text-sm text-muted-foreground">No closed, not-yet-invoiced weigh tags right now.</p>
+    </div>
+  <% else %>
+    <%= form_with url: invoice_batches_path, method: :post do %>
+      <div class="bg-card border border-border rounded-lg p-4 mb-4 grid sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">External invoice number</label>
+          <%= text_field_tag :external_invoice_number, nil, required: true, class: "#{field} w-full", placeholder: "e.g. INV-20486" %>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Invoice date</label>
+          <%= date_field_tag :invoice_date, Date.current, class: "#{field} w-full" %>
+        </div>
+      </div>
+
+      <div class="bg-card border border-border rounded-lg overflow-hidden mb-4">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="bg-secondary/60 text-left border-b border-border">
+              <th class="px-4 py-2 w-8"><input type="checkbox" data-action="checkall#toggle" data-checkall-target="all"></th>
+              <th class="<%= th_class %>">BOL</th>
+              <th class="<%= th_class %>">Ship date</th>
+              <th class="<%= th_class %>">Receiver</th>
+              <th class="<%= th_class %>">Commodity</th>
+              <th class="<%= th_class(:right) %>">Net (lb)</th>
+              <th class="<%= th_class %>">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% @tags.each do |tag| %>
+              <tr class="border-b border-border">
+                <td class="px-4 py-2.5"><%= check_box_tag "load_ids[]", tag.id, false, data: { "checkall-target": "item" } %></td>
+                <td class="px-4 py-2.5 font-mono"><%= tag.bol %></td>
+                <td class="px-4 py-2.5 tabular-nums"><%= fmt_short_date(tag.ship_date) %></td>
+                <td class="px-4 py-2.5"><%= tag.receiver_org.name %></td>
+                <td class="px-4 py-2.5"><%= tag.commodity %></td>
+                <td class="px-4 py-2.5 text-right font-mono tabular-nums"><%= lb(tag.sender_weigh&.net) %></td>
+                <td class="px-4 py-2.5"><%= render StatusPillComponent.for_tag(tag) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+
+      <%= submit_tag "Mark selected as invoiced", class: btn_class(:primary, size: :lg) %>
+    <% end %>
+  <% end %>
+</div>

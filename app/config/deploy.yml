@@ -1,0 +1,67 @@
+# Kamal 2 deploy config for WeighTags. Fill in the host, registry, and domain,
+# then: `kamal setup` once, `kamal deploy` thereafter. Continuous deploy from
+# green main is the intended motion (charter: deploys cheap, fast, reversible).
+service: weightags
+
+# Container image. Point this at your registry namespace.
+image: your-namespace/weightags
+
+# One small app container to start; add hosts here as volume warrants.
+servers:
+  web:
+    - 192.168.0.1
+  # Background jobs — the dispute clock (B5) runs here via Solid Queue.
+  job:
+    hosts:
+      - 192.168.0.1
+    cmd: bin/jobs
+
+# Zero-downtime deploys + automatic Let's Encrypt TLS via kamal-proxy.
+proxy:
+  ssl: true
+  host: weightags.example.com
+  healthcheck:
+    path: /up
+    interval: 3
+
+registry:
+  server: ghcr.io
+  username: your-registry-user
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+# Master key decrypts credentials; DB credentials come from .kamal/secrets.
+env:
+  secret:
+    - RAILS_MASTER_KEY
+    - WEIGHTAGS_DB_PASSWORD
+  clear:
+    WEIGHTAGS_DB_HOST: weightags-db
+    WEIGHTAGS_DB_USER: weightags
+    WEIGHTAGS_DB_NAME: weightags_production
+    # Solid Queue runs inside Puma on small deployments is also possible; here we
+    # run a dedicated job host (see servers.job).
+    SOLID_QUEUE_IN_PUMA: false
+
+# Persist Active Storage uploads across deploys.
+volumes:
+  - "weightags_storage:/rails/storage"
+
+# Build the image on the deploy host (or set up a remote builder).
+builder:
+  arch: amd64
+
+# Managed Postgres as a Kamal accessory (or use an external managed instance).
+accessories:
+  db:
+    image: postgres:16
+    host: 192.168.0.1
+    port: "127.0.0.1:5432:5432"
+    env:
+      clear:
+        POSTGRES_USER: weightags
+        POSTGRES_DB: weightags_production
+      secret:
+        - POSTGRES_PASSWORD
+    directories:
+      - data:/var/lib/postgresql/data

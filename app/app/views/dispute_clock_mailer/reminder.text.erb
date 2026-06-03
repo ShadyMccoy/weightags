@@ -1,0 +1,7 @@
+Weigh tag BOL <%= @tag.bol %> between <%= @tag.sender_org.name %> (sender) and <%= @tag.receiver_org.name %> (receiver) is still showing a variance above tolerance.
+
+The dispute window closes in <%= @days_left %> day<%= "s" unless @days_left == 1 %>, on <%= @tag.clock_due_at.strftime("%b %-d, %Y %l:%M %p %Z") %>.
+
+If no one disputes it before then, the tag will be recorded as shown, notified, and uncontested — defaulting to the sender's recorded values. This is a neutral record of what happened, not a declaration that anyone agreed.
+
+Review it: <%= tag_url(@tag) %>

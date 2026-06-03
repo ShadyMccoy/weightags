@@ -1,0 +1,7 @@
+<%= @notification.title %>
+
+<%= @notification.body %>
+<% if @notification.url.present? %>
+
+View it: <%= @notification.url %>
+<% end %>
