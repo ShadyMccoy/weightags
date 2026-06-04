@@ -1,0 +1,339 @@
+openapi: 3.1.0
+info:
+  title: WeighTags API
+  version: "1.0.0"
+  description: |
+    The headless ingest channel for WeighTags — a neutral, multiplayer system of record for
+    weigh-tag reconciliation between commodity growers and buyers.
+
+    The API exposes a **single outward resource, the `weigh_tag`**. Internally a shipment is a
+    `Tag` projected over per-party `Weigh` records, but that split never leaks here: a weigh tag is
+    *one shipment seen from your org* — your weigh, your partner's weigh, and the reconciliation
+    status. The two primary functions are **upload** (`POST`) and **status sync** (`GET`).
+
+    Weights are returned as **decimal strings**, not floats — this is a money-adjacent system of
+    record and precision is preserved deliberately.
+  contact:
+    name: WeighTags
+    url: https://github.com/sheetgenius/weightags
+  license:
+    name: Proprietary
+
+servers:
+  - url: /
+    description: This deployment
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Weigh tags
+    description: Upload weighs and sync their reconciliation status.
+
+paths:
+  /api/v1/weigh_tags:
+    get:
+      tags: [Weigh tags]
+      summary: List weigh tags
+      description: |
+        Returns the weigh tags visible to your org, newest first. Same filters as the web index.
+      operationId: listWeighTags
+      parameters:
+        - name: q
+          in: query
+          description: Match on BOL, truck, or driver.
+          schema: { type: string }
+        - name: status
+          in: query
+          description: Filter by status. Accepts any status value, or `closed_unbilled`.
+          schema:
+            type: string
+        - name: partner_id
+          in: query
+          description: Restrict to a single partner org.
+          schema: { type: integer }
+        - name: from
+          in: query
+          description: Earliest ship date (inclusive), ISO 8601.
+          schema: { type: string, format: date }
+        - name: to
+          in: query
+          description: Latest ship date (inclusive), ISO 8601.
+          schema: { type: string, format: date }
+        - name: invoice_number
+          in: query
+          description: Match on linked external invoice number.
+          schema: { type: string }
+        - name: page
+          in: query
+          description: 1-based page number.
+          schema: { type: integer, minimum: 1, default: 1 }
+        - name: per_page
+          in: query
+          description: Page size.
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        "200":
+          description: A page of weigh tags.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [weigh_tags, page, per_page]
+                properties:
+                  weigh_tags:
+                    type: array
+                    items: { $ref: "#/components/schemas/WeighTag" }
+                  page: { type: integer, example: 1 }
+                  per_page: { type: integer, example: 50 }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Weigh tags]
+      summary: Upload a weigh
+      description: |
+        Record your weigh for a shipment. Two ways to say which shipment it belongs to:
+
+        - **By partner + BOL** (default): name your partner (`partner` or `partner_id`) and your
+          `role`; the system mints or auto-pairs a shipment on exact BOL.
+        - **By `weigh_tag_id`** (preferred when the partner posted first): append your weigh to their
+          existing shipment — no re-keyed BOL, no pairing.
+
+        Naming a `partner` that doesn't exist creates a placeholder org; add `partner_email` to send
+        them a claim invite.
+
+        Requires a **read-write** API key; a read-only key returns `403`.
+      operationId: createWeighTag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WeighTagInput" }
+            examples:
+              newShipment:
+                summary: Your side of a new shipment
+                value:
+                  bol: "10849"
+                  partner: "Pacific Hulling Co"
+                  role: "sender"
+                  ship_date: "2026-05-27"
+                  commodity: "Soybeans"
+                  truck: "TX-4471"
+                  driver: "J. Smith"
+                  gross: 50000
+                  tare: 10000
+                  moisture: 13.2
+                  scale_id: "SC-1"
+                  weighed_by: "R. Green"
+              weighIn:
+                summary: Weigh in against the partner's open shipment
+                value:
+                  weigh_tag_id: 1234
+                  gross: 50010
+                  tare: 10000
+      responses:
+        "201":
+          description: The resulting weigh tag.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [weigh_tag]
+                properties:
+                  weigh_tag: { $ref: "#/components/schemas/WeighTag" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+
+  /api/v1/weigh_tags/{id}:
+    get:
+      tags: [Weigh tags]
+      summary: Get a weigh tag
+      operationId: getWeighTag
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: One weigh tag.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [weigh_tag]
+                properties:
+                  weigh_tag: { $ref: "#/components/schemas/WeighTag" }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: |
+        Send your API key as `Authorization: Bearer <token>`. Mint one under **API** in the app
+        (admin only); the plaintext is shown once. Keys are scoped to one org and revocable, and carry
+        a permission scope: **read-only** (sync statuses) or **read-write** (also upload weighs). Each
+        key also has a non-secret **Key ID** (`wtk_…`) shown in the dashboard for identification.
+
+  responses:
+    Unauthorized:
+      description: Missing, invalid, or revoked API key.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: "Provide a valid API key as 'Authorization: Bearer <token>'." }
+    Forbidden:
+      description: The API key is read-only; this action needs a read-write key.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: "This API key is read-only. Use a read-write key to upload weighs." }
+    NotFound:
+      description: No weigh tag with that id is visible to your org.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: "Not found." }
+    UnprocessableEntity:
+      description: No partner named, or the weigh failed validation.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example:
+            error: "Could not save weigh tag."
+            details: ["Bol can't be blank"]
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        details:
+          type: array
+          items: { type: string }
+          description: Field-level validation messages, when applicable.
+
+    Partner:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string, example: "Pacific Hulling Co" }
+
+    Weigh:
+      type: object
+      description: One party's measurements and provenance. Weights are decimal strings.
+      properties:
+        gross: { type: [string, "null"], example: "50000.0" }
+        tare: { type: [string, "null"], example: "10000.0" }
+        net: { type: [string, "null"], example: "40000.0" }
+        moisture: { type: [string, "null"], example: "13.2" }
+        grade: { type: [string, "null"], example: "US 2" }
+        weighed_by: { type: [string, "null"], example: "R. Green" }
+        scale_id: { type: [string, "null"], example: "SC-1" }
+        notes: { type: [string, "null"] }
+        recorded_ref:
+          type: [string, "null"]
+          description: The shipment reference exactly as this party keyed it (never overwritten).
+        weighed_at: { type: [string, "null"], format: date-time }
+
+    WeighTag:
+      type: object
+      description: One shipment seen from your org.
+      properties:
+        id: { type: integer, example: 1234 }
+        bol: { type: string, example: "10849" }
+        status:
+          type: string
+          description: Reconciliation status from your perspective.
+          enum:
+            - awaiting_partner
+            - awaiting_you
+            - review
+            - matched
+            - disputed
+            - compromise_proposed
+            - resolved
+            - invoiced
+        role:
+          type: [string, "null"]
+          description: Your side of this shipment.
+          enum: [sender, receiver, null]
+        partner: { $ref: "#/components/schemas/Partner" }
+        ship_date: { type: [string, "null"], format: date }
+        commodity: { type: [string, "null"], example: "Soybeans" }
+        truck: { type: [string, "null"] }
+        driver: { type: [string, "null"] }
+        mine:
+          oneOf:
+            - { $ref: "#/components/schemas/Weigh" }
+            - { type: "null" }
+          description: Your weigh, or null if you haven't posted.
+        partner_weigh:
+          oneOf:
+            - { $ref: "#/components/schemas/Weigh" }
+            - { type: "null" }
+          description: The partner's weigh, or null if they haven't posted.
+        net_delta:
+          type: [string, "null"]
+          description: Net difference, receiver minus sender (sender→receiver convention).
+          example: "-30.0"
+        net_delta_percent: { type: [string, "null"], example: "-0.06" }
+        within_tolerance:
+          type: [boolean, "null"]
+          description: Null until both sides have posted.
+        canonical_net:
+          type: [string, "null"]
+          description: The agreed value once closed, else null.
+        invoice_number: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    WeighTagInput:
+      type: object
+      description: |
+        Provide either a target (`weigh_tag_id`, or `partner`/`partner_id` + `role`) plus your
+        measurements. `bol` is required unless weighing in by `weigh_tag_id`.
+      properties:
+        weigh_tag_id:
+          type: integer
+          description: Weigh in against this existing shipment (skips partner/BOL pairing).
+        partner:
+          type: string
+          description: Partner org name. Reused if it exists, otherwise created.
+        partner_id:
+          type: integer
+          description: Existing partner org id (alternative to `partner`).
+        partner_email:
+          type: string
+          format: email
+          description: Invite a not-yet-on-platform partner by email.
+        role:
+          type: string
+          enum: [sender, receiver]
+          default: sender
+        bol: { type: string, example: "10849" }
+        ship_date: { type: string, format: date }
+        commodity: { type: string }
+        truck: { type: string }
+        driver: { type: string }
+        gross: { type: number, example: 50000 }
+        tare: { type: number, example: 10000 }
+        net:
+          type: number
+          description: Derived from gross − tare if omitted.
+        moisture: { type: number }
+        grade: { type: string }
+        weighed_by: { type: string }
+        scale_id: { type: string }
+        weighed_at: { type: string, format: date-time }
+        notes: { type: string }

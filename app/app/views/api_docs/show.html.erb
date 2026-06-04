@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>WeighTags API — Reference</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="WeighTags API reference — upload weighs and sync statuses over a simple JSON API.">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <style>body { margin: 0; padding: 0; }</style>
+  </head>
+  <body>
+    <redoc spec-url="<%= openapi_spec_path %>"></redoc>
+    <%# Redoc is vendored (public/vendor/redoc.standalone.js) so the reference renders
+        with no external CDN dependency — works in restricted-egress networks. %>
+    <script src="/vendor/redoc.standalone.js"></script>
+  </body>
+</html>

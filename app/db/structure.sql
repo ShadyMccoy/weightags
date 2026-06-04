@@ -42,6 +42,45 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
+-- Name: api_keys; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.api_keys (
+    id bigint NOT NULL,
+    org_id bigint NOT NULL,
+    user_id bigint NOT NULL,
+    name character varying NOT NULL,
+    token_digest character varying NOT NULL,
+    token_last4 character varying NOT NULL,
+    last_used_at timestamp(6) without time zone,
+    revoked_at timestamp(6) without time zone,
+    created_at timestamp(6) without time zone NOT NULL,
+    updated_at timestamp(6) without time zone NOT NULL,
+    public_id character varying NOT NULL,
+    scope character varying DEFAULT 'read_write'::character varying NOT NULL
+);
+
+
+--
+-- Name: api_keys_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.api_keys_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: api_keys_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.api_keys_id_seq OWNED BY public.api_keys.id;
+
+
+--
 -- Name: ar_internal_metadata; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -530,6 +569,13 @@ ALTER SEQUENCE public.weighs_id_seq OWNED BY public.weighs.id;
 
 
 --
+-- Name: api_keys id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_keys ALTER COLUMN id SET DEFAULT nextval('public.api_keys_id_seq'::regclass);
+
+
+--
 -- Name: audit_events id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -611,6 +657,14 @@ ALTER TABLE ONLY public.users ALTER COLUMN id SET DEFAULT nextval('public.users_
 --
 
 ALTER TABLE ONLY public.weighs ALTER COLUMN id SET DEFAULT nextval('public.weighs_id_seq'::regclass);
+
+
+--
+-- Name: api_keys api_keys_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_keys
+    ADD CONSTRAINT api_keys_pkey PRIMARY KEY (id);
 
 
 --
@@ -730,6 +784,34 @@ ALTER TABLE ONLY public.weighs
 --
 
 CREATE UNIQUE INDEX index_active_memberships_on_user_and_org ON public.memberships USING btree (user_id, org_id) WHERE (ended_at IS NULL);
+
+
+--
+-- Name: index_api_keys_on_org_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_api_keys_on_org_id ON public.api_keys USING btree (org_id);
+
+
+--
+-- Name: index_api_keys_on_public_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_api_keys_on_public_id ON public.api_keys USING btree (public_id);
+
+
+--
+-- Name: index_api_keys_on_token_digest; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_api_keys_on_token_digest ON public.api_keys USING btree (token_digest);
+
+
+--
+-- Name: index_api_keys_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_api_keys_on_user_id ON public.api_keys USING btree (user_id);
 
 
 --
@@ -1086,6 +1168,14 @@ ALTER TABLE ONLY public.tags
 
 
 --
+-- Name: api_keys fk_rails_32c28d0dc2; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_keys
+    ADD CONSTRAINT fk_rails_32c28d0dc2 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
 -- Name: weighs fk_rails_36f4cd882d; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -1123,6 +1213,14 @@ ALTER TABLE ONLY public.invoice_batches
 
 ALTER TABLE ONLY public.sessions
     ADD CONSTRAINT fk_rails_758836b4f0 FOREIGN KEY (user_id) REFERENCES public.users(id);
+
+
+--
+-- Name: api_keys fk_rails_793f3dfc45; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.api_keys
+    ADD CONSTRAINT fk_rails_793f3dfc45 FOREIGN KEY (org_id) REFERENCES public.orgs(id);
 
 
 --
@@ -1299,6 +1397,8 @@ CREATE POLICY weighs_org_isolation ON public.weighs USING (((org_id = ANY (publi
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260603020000'),
+('20260603010000'),
 ('20260603000001'),
 ('20260602068000'),
 ('20260602067000'),

@@ -7,6 +7,7 @@ class Org < ApplicationRecord
   has_many :partner_orgs, through: :partnerships, source: :counterparty_org
 
   has_many :weighs, dependent: :destroy
+  has_many :api_keys, dependent: :destroy
 
   has_many :sent_tags, class_name: "Tag", foreign_key: :sender_org_id, dependent: :destroy
   has_many :received_tags, class_name: "Tag", foreign_key: :receiver_org_id, dependent: :destroy

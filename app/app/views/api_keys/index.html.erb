@@ -1,0 +1,80 @@
+<% content_for :title, "API keys — WeighTags" %>
+
+<div class="py-6 px-6 max-w-3xl mx-auto">
+  <h1 class="text-2xl font-medium mb-1">API keys</h1>
+  <p class="text-sm text-muted-foreground mb-6">
+    Use the API to upload weighs and sync statuses without the web app. Authenticate with
+    <code class="text-xs bg-secondary px-1 py-0.5 rounded">Authorization: Bearer &lt;token&gt;</code>.
+    Keys act for <span class="font-medium"><%= current_org.name %></span>; actions attribute to you in the audit log.
+  </p>
+
+  <% if @new_token.present? %>
+    <div class="bg-status-matched/10 border border-status-matched rounded-lg p-4 mb-6">
+      <div class="text-sm font-medium mb-1">Your new token — copy it now</div>
+      <p class="text-xs text-muted-foreground mb-2">This is the only time it will be shown.</p>
+      <code class="block text-sm font-mono bg-card border border-border rounded px-3 py-2 break-all"><%= @new_token %></code>
+    </div>
+  <% end %>
+
+  <%= form_with url: api_keys_path, method: :post,
+        class: "bg-card border border-border rounded-lg p-4 flex flex-wrap items-end gap-4 mb-6" do %>
+    <div class="flex-1 min-w-[200px]">
+      <label class="block text-xs text-muted-foreground mb-1">Name (e.g. “Scale house tablet”)</label>
+      <%= text_field_tag :name, nil, placeholder: "API key", class: "#{field_class} w-full" %>
+    </div>
+    <div>
+      <label class="block text-xs text-muted-foreground mb-1">Access</label>
+      <%= select_tag :scope,
+            options_for_select([ [ "Read & write", "read_write" ], [ "Read-only", "read_only" ] ], "read_write"),
+            class: "#{field_class} w-40" %>
+    </div>
+    <%= submit_tag "Create key", class: btn_class(:primary, size: :md) %>
+  <% end %>
+  <p class="text-xs text-muted-foreground -mt-4 mb-6">
+    <span class="font-medium">Read &amp; write</span> uploads weighs and reads statuses;
+    <span class="font-medium">read-only</span> can sync statuses but not post — e.g. a key for your accountant.
+  </p>
+
+  <% if @api_keys.none? %>
+    <div class="bg-card border border-border rounded-lg p-10 text-center text-sm text-muted-foreground">
+      No API keys yet. Create one above to use the headless API.
+    </div>
+  <% else %>
+    <table class="w-full bg-card border border-border rounded-lg overflow-hidden text-sm">
+      <thead class="border-b border-border">
+        <tr>
+          <th class="<%= th_class %> text-left">Name</th>
+          <th class="<%= th_class %> text-left">Key ID</th>
+          <th class="<%= th_class %> text-left">Access</th>
+          <th class="<%= th_class %> text-left">Last used</th>
+          <th class="<%= th_class %> text-left">Status</th>
+          <th class="<%= th_class %>"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @api_keys.each do |key| %>
+          <tr class="border-b border-border last:border-0">
+            <td class="px-4 py-2 font-medium"><%= key.name %></td>
+            <td class="px-4 py-2 font-mono text-muted-foreground"><%= key.public_id %></td>
+            <td class="px-4 py-2"><%= key.scope_label %></td>
+            <td class="px-4 py-2 text-muted-foreground"><%= fmt_datetime(key.last_used_at) %></td>
+            <td class="px-4 py-2">
+              <% if key.revoked? %>
+                <span class="text-muted-foreground">Revoked</span>
+              <% else %>
+                <span class="text-status-matched">Active</span>
+              <% end %>
+            </td>
+            <td class="px-4 py-2 text-right">
+              <% unless key.revoked? %>
+                <%= button_to "Revoke", api_key_path(key), method: :delete,
+                      form: { data: { turbo_confirm: "Revoke “#{key.name}”? Apps using it will stop working." } },
+                      class: btn_class(:secondary) %>
+              <% end %>
+            </td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+</div>

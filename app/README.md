@@ -68,6 +68,17 @@ The full roadmap — Foundation (G0) and Waves A–D — is built and gated. Bel
 `StatusPillComponent` (palette by register), `DeltaCellComponent` (absolute + %, tolerance colouring),
 `VarianceStatusComponent` (within/exceeds callout).
 
+### Headless API (Ingest excellence)
+A small JSON API makes the app usable without the browser — **upload weighs, sync statuses**. It
+exposes a single outward `weigh_tag` object (the internal `Tag`/`Weigh` split never leaks) and is
+layered on the same domain services the UI uses (`Weighs::Poster`, `Tags::Query`), so it can't drift
+from the screen. Bearer-token auth (`ApiKey`, digest-only storage, self-serve under **API** in the nav,
+admin-only); every request binds to the key's org under the same Postgres RLS as the web app, and
+posted weighs attribute to the key's user in the audit log. Endpoints: `GET/POST /api/v1/weigh_tags`,
+`GET /api/v1/weigh_tags/:id`. Described by a public **OpenAPI 3.1** spec (`config/openapi.yaml`, served
+at `/openapi.yaml`) with a rendered **Redoc** reference at `/api/docs`. Overview:
+[`../docs/api.md`](../docs/api.md).
+
 ## Deploy
 Dockerized, deployed with **Kamal 2** (`config/deploy.yml`, `Dockerfile`, `.kamal/secrets`): one app
 container + a job host (`bin/jobs` for the dispute clock) + a Postgres accessory, zero-downtime via

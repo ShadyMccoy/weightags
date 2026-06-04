@@ -50,6 +50,21 @@ Rails.application.routes.draw do
     collection { post :read_all }
   end
 
+  # Headless ingest API (charter: "production public API (v2)"). One simple
+  # outward "weigh tag" object; upload weighs and sync statuses. Bearer-token auth.
+  namespace :api do
+    namespace :v1 do
+      resources :weigh_tags, only: %i[index show create]
+    end
+  end
+
+  # Public API reference: OpenAPI 3.1 spec + a rendered Redoc page (no auth).
+  get "api/docs",     to: "api_docs#show", as: :api_docs
+  get "openapi.yaml", to: "api_docs#spec", as: :openapi_spec
+
+  # Self-serve API key management (admin only).
+  resources :api_keys, only: %i[index create destroy]
+
   # System-of-record extras and org management.
   resources :activity, only: :index                      # C1 cross-tag feed
   resources :partnerships, only: %i[index update]         # C3 tolerances + windows
