@@ -30,6 +30,7 @@ gem "csv"
 
 # Pure-Ruby PDF generation for invoice-batch summaries (C4) — no headless Chrome.
 gem "prawn"
+gem "matrix", "~> 0.4"
 gem "prawn-table"
 
 # Windows does not include zoneinfo files, so bundle the tzinfo-data gem
