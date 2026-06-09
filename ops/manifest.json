@@ -27,10 +27,11 @@
   "deploy": {
     "services": {
       "web": {
-        "start_command": "bin/thrust bin/rails server -b 0.0.0.0 -p 80",
+        "start_command": "bin/rails server -b 0.0.0.0 -p 80",
         "container_port": 80,
         "health_path": "/up"
       }
-    }
+    },
+    "start_command": "bin/rails server -b 0.0.0.0 -p 80"
   }
 }
