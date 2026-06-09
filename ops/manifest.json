@@ -1,0 +1,35 @@
+{
+  "schema": "bittergrid.repo_manifest.v1",
+  "runtime": {
+    "kind": "rails",
+    "default_process": "web",
+    "processes": {
+      "web": {
+        "start_command": "bin/thrust bin/rails server -b 0.0.0.0 -p 80",
+        "container_port": 80,
+        "health_path": "/up"
+      }
+    }
+  },
+  "build": {
+    "dockerfile": "app/Dockerfile",
+    "context": "app"
+  },
+  "database": {
+    "kind": "postgres",
+    "env": "DATABASE_URL",
+    "schema_source": "app/db/schema.rb"
+  },
+  "migrations": {
+    "command": "bin/rails db:migrate"
+  },
+  "deploy": {
+    "services": {
+      "web": {
+        "start_command": "bin/thrust bin/rails server -b 0.0.0.0 -p 80",
+        "container_port": 80,
+        "health_path": "/up"
+      }
+    }
+  }
+}
