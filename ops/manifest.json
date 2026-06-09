@@ -21,7 +21,8 @@
     "schema_source": "app/db/schema.rb"
   },
   "migrations": {
-    "command": "bin/rails db:migrate"
+    "command": "cd /rails && bin/rails db:migrate",
+    "schema_source": "app/db/schema.rb"
   },
   "deploy": {
     "services": {
