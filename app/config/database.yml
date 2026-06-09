@@ -90,11 +90,10 @@ test:
 #
 production:
   primary: &primary_production
-    <<: *default
-    database: <%= ENV.fetch("WEIGHTAGS_DB_NAME", "weightags_production") %>
-    username: <%= ENV.fetch("WEIGHTAGS_DB_USER", "weightags") %>
-    password: <%= ENV["WEIGHTAGS_DB_PASSWORD"] %>
-    host: <%= ENV.fetch("WEIGHTAGS_DB_HOST", "weightags-db") %>
+    adapter: postgresql
+    encoding: unicode
+    url: <%= ENV["DATABASE_URL"] %>
+    max_connections: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
   cache:
     <<: *primary_production
     database: <%= ENV.fetch("WEIGHTAGS_DB_NAME", "weightags_production") %>_cache
