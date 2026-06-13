@@ -1,6 +1,6 @@
 <% content_for :title, "WeighTags — Commodity Weigh Tag Reconciliation" %>
 
-<section class="px-6 py-16 max-w-4xl mx-auto">
+<section class="px-6 pt-16 pb-10 max-w-6xl mx-auto">
   <div class="max-w-2xl">
     <h1 class="text-4xl font-medium tracking-tight mb-4">
       A neutral system of record for weigh-tag reconciliation.
@@ -18,8 +18,32 @@
             class: "px-4 py-2.5 rounded-md border border-border" %>
     </div>
   </div>
+</section>
 
-  <div class="grid sm:grid-cols-3 gap-4 mt-16">
+<%# Product shot: the shared reconciliation dashboard %>
+<section class="px-6 pb-16 max-w-6xl mx-auto">
+  <figure class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+    <div class="flex items-center gap-1.5 px-4 py-2.5 border-b border-border bg-background">
+      <span class="w-2.5 h-2.5 rounded-full bg-border"></span>
+      <span class="w-2.5 h-2.5 rounded-full bg-border"></span>
+      <span class="w-2.5 h-2.5 rounded-full bg-border"></span>
+      <span class="ml-3 text-xs text-muted-foreground font-mono">app.weightags.com/tags</span>
+    </div>
+    <%# Desktop dashboard on ≥sm screens; a phone-fit capture on small screens. %>
+    <%= image_tag "screenshot-tags-list.png",
+          alt: "The WeighTags reconciliation dashboard: every BOL with sender net, receiver net, the delta, and a status — pending, review, disputed, or matched.",
+          loading: "lazy", class: "w-full hidden sm:block" %>
+    <%= image_tag "screenshot-tags-list-mobile.png",
+          alt: "The WeighTags reconciliation dashboard on a phone: status totals, filters, and the weigh-tag table.",
+          loading: "lazy", class: "w-full block sm:hidden" %>
+  </figure>
+  <figcaption class="text-sm text-muted-foreground text-center mt-3">
+    Every tag on one board — sender net, receiver net, the delta, and where it stands.
+  </figcaption>
+</section>
+
+<section class="px-6 pb-4 max-w-6xl mx-auto">
+  <div class="grid sm:grid-cols-3 gap-4">
     <% [
       ["Post once", "Upload a day's weighs by CSV or type them in at the scale house. Stop emailing spreadsheets."],
       ["See the difference", "Sender on the left, receiver on the right, the delta in the center — the same view for both parties."],
@@ -30,5 +54,38 @@
         <p class="text-sm text-muted-foreground"><%= body %></p>
       </div>
     <% end %>
+  </div>
+</section>
+
+<%# Product shot: the side-by-side weigh-tag detail %>
+<section class="px-6 py-16 max-w-6xl mx-auto">
+  <div class="grid lg:grid-cols-5 gap-8 lg:items-center">
+    <div class="lg:col-span-2">
+      <h2 class="text-2xl font-medium tracking-tight mb-3">
+        Side by side, with the delta in the middle.
+      </h2>
+      <p class="text-muted-foreground mb-4">
+        Open any tag and both weighs sit next to each other — gross, tare, and net,
+        with the variance called out the moment it exceeds tolerance. No spreadsheet
+        math, no he-said-she-said.
+      </p>
+      <p class="text-sm text-muted-foreground">
+        Every pairing, edit, and dispute lands in an append-only activity log, so the
+        record of who saw what and when speaks for itself.
+      </p>
+    </div>
+    <div class="lg:col-span-3">
+      <figure class="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+        <div class="flex items-center gap-1.5 px-4 py-2.5 border-b border-border bg-background">
+          <span class="w-2.5 h-2.5 rounded-full bg-border"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-border"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-border"></span>
+          <span class="ml-3 text-xs text-muted-foreground font-mono">app.weightags.com/tags/WT-2026-0527-002</span>
+        </div>
+        <%= image_tag "screenshot-tag-detail.png",
+              alt: "A single weigh tag in detail: sender and receiver weighs compared field by field, the net delta highlighted, a variance callout, and an append-only activity log.",
+              loading: "lazy", class: "w-full block" %>
+      </figure>
+    </div>
   </div>
 </section>

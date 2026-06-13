@@ -2,13 +2,13 @@
 <%= turbo_stream_from "org_#{current_org.id}_loads" %>
 <% field = field_class(:filter) %>
 
-<div class="py-6 px-6">
-  <div class="mb-6 flex items-start justify-between gap-4">
+<div class="py-6 px-4 sm:px-6">
+  <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
     <div>
       <h1 class="text-2xl font-medium mb-1">Weigh tags</h1>
       <p class="text-sm text-muted-foreground">Reconciliation dashboard for <%= current_org.name %></p>
     </div>
-    <div class="flex items-center gap-2 shrink-0">
+    <div class="flex flex-wrap items-center gap-2 shrink-0">
       <%= link_to "Mark invoiced", new_invoice_batch_path, class: btn_class(:secondary, size: :md) %>
       <%= link_to "Import CSV", new_csv_import_path, class: btn_class(:secondary, size: :md) %>
       <%= link_to "Add weigh tag", new_weigh_path, class: btn_class(:primary, size: :md) %>

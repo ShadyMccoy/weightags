@@ -1,14 +1,14 @@
 <tr id="<%= dom_id(tag) %>" class="border-b border-border hover:bg-secondary/40">
-  <td class="px-4 py-2.5 font-mono">
+  <td class="px-4 py-2.5 font-mono whitespace-nowrap">
     <%= link_to tag.bol, tag_path(tag), class: "text-primary hover:underline" %>
   </td>
   <td class="px-4 py-2.5 tabular-nums whitespace-nowrap">
     <%= fmt_short_date(tag.ship_date) %>
   </td>
-  <td class="px-4 py-2.5"><%= tag.commodity.presence || "—" %></td>
-  <td class="px-4 py-2.5"><%= tag.sender_org.name %></td>
-  <td class="px-4 py-2.5"><%= tag.receiver_org.name %></td>
-  <td class="px-4 py-2.5 font-mono"><%= tag.truck.presence || "—" %></td>
+  <td class="px-4 py-2.5 whitespace-nowrap"><%= tag.commodity.presence || "—" %></td>
+  <td class="px-4 py-2.5 whitespace-nowrap"><%= tag.sender_org.name %></td>
+  <td class="px-4 py-2.5 whitespace-nowrap"><%= tag.receiver_org.name %></td>
+  <td class="px-4 py-2.5 font-mono whitespace-nowrap"><%= tag.truck.presence || "—" %></td>
   <td class="px-4 py-2.5 text-right tabular-nums font-mono">
     <%= tag.sender_weigh ? lb(tag.sender_weigh.net) : "—" %>
   </td>
