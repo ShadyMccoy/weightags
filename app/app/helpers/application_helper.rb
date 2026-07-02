@@ -34,9 +34,9 @@ module ApplicationHelper
   def btn_class(variant = :secondary, size: :sm)
     pad = { sm: "px-3 py-1.5 text-sm", md: "px-3 py-2 text-sm", lg: "px-4 py-2.5" }.fetch(size)
     look = case variant
-           when :primary then "bg-primary text-primary-foreground font-medium"
-           else "border border-border bg-card hover:bg-secondary"
-           end
+    when :primary then "bg-primary text-primary-foreground font-medium"
+    else "border border-border bg-card hover:bg-secondary"
+    end
     "#{pad} rounded-md cursor-pointer #{look}"
   end
 end

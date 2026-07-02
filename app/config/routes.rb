@@ -75,7 +75,7 @@ Rails.application.routes.draw do
   post "claim/:token", to: "claims#create"
 
   # Domain verification + same-domain admin recovery (D3).
-  resource  :domain, only: %i[show update], controller: "domains" do
+  resource :domain, only: %i[show update], controller: "domains" do
     post :verify_dns, on: :member
   end
   get "domain/confirm/:token", to: "domains#confirm", as: :confirm_domain

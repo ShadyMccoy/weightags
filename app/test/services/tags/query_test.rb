@@ -19,8 +19,8 @@ class Tags::QueryTest < ActiveSupport::TestCase
   def query(params) = Tags::Query.new(org: @rel.grower, params: params)
 
   test "text search matches BOL and truck" do
-    assert_equal ["BOL-A"], query(q: "bol-a").results.pluck(:bol)
-    assert_equal ["BOL-B"], query(q: "T-2").results.pluck(:bol)
+    assert_equal [ "BOL-A" ], query(q: "bol-a").results.pluck(:bol)
+    assert_equal [ "BOL-B" ], query(q: "T-2").results.pluck(:bol)
   end
 
   test "partner filter scopes to one relationship" do

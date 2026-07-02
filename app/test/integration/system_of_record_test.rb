@@ -16,7 +16,7 @@ class SystemOfRecordTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_equal "text/csv", response.media_type
     rows = CSV.parse(response.body, headers: true)
-    assert_equal ["BOL-SOR"], rows["bol"]
+    assert_equal [ "BOL-SOR" ], rows["bol"]
   end
 
   test "sender marks invoiced and the receiver verifies by invoice number" do
