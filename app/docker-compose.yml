@@ -1,0 +1,50 @@
+# Local development stack for WeighTags — NOT a deploy artifact (prod uses Kamal).
+#   docker compose up           # build + run web (Rails) and db (Postgres)
+#   docker compose run --rm web bundle exec rails db:seed   # demo data
+# App: http://localhost:3000   ·   DB exposed on host port 5433 (5432 is your host PG).
+#
+# bin/* scripts are invoked as `bundle exec rails ...` to dodge the Windows CRLF
+# shebang problem on the bind-mounted source.
+name: weightags-dev
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: weightags
+      POSTGRES_PASSWORD: weightags
+      POSTGRES_DB: weightags_development
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U weightags -d weightags_development"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    command: >
+      bash -c "bundle exec rails db:prepare &&
+               bundle exec rails tailwindcss:build &&
+               bundle exec rails server -b 0.0.0.0 -p 3000"
+    environment:
+      RAILS_ENV: development
+      WEIGHTAGS_DB_HOST: db
+      WEIGHTAGS_DB_PORT: 5432
+      WEIGHTAGS_DB_USER: weightags
+      WEIGHTAGS_DB_PASSWORD: weightags
+    ports:
+      - "3000:3000"
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  pgdata:

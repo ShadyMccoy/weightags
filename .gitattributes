@@ -1,0 +1,15 @@
+# Line endings.
+#
+# Development happens on Windows (core.autocrlf=true), but production is the
+# Linux image built from ./app/Dockerfile. Anything *executed inside that image*
+# must keep LF endings: a CRLF shebang makes the kernel look for an interpreter
+# named "/bin/bash -e\r" and the container dies with "bad interpreter". Pin those
+# paths here so neither a Windows checkout nor a future commit can flip them.
+app/bin/*         text eol=lf
+app/Dockerfile*   text eol=lf
+app/.dockerignore text eol=lf
+*.sh              text eol=lf
+
+# Loaded by psql inside the Linux container and contains dollar-quoted PL/pgSQL
+# function bodies (the audit-log append-only trigger) — keep \r out of them.
+app/db/structure.sql text eol=lf

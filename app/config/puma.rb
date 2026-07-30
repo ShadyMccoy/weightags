@@ -35,7 +35,14 @@ port ENV.fetch("PORT", 3000)
 plugin :tmp_restart
 
 # Run the Solid Queue supervisor inside of Puma for single-server deployments.
-plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"]
+#
+# Parse the value rather than testing truthiness: in Ruby the string "false" is
+# truthy, so a bare `if ENV[...]` starts the supervisor even when the deploy
+# config explicitly sets SOLID_QUEUE_IN_PUMA=false to run a dedicated job host
+# instead. That yields two supervisors on the same queue, and the dispute clock
+# is only idempotent under a single serial worker (docs/correctness-gaps.md CG-1)
+# — so getting this wrong double-fires auto-accept.
+plugin :solid_queue if ENV["SOLID_QUEUE_IN_PUMA"].to_s.strip.match?(/\A(1|t|true|y|yes|on)\z/i)
 
 # Specify the PID file. Defaults to tmp/pids/server.pid in development.
 # In other environments, only set the PID file if requested.

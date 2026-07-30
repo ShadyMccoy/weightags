@@ -1,3 +1,21 @@
+# ============================================================================
+# INACTIVE — production runs on Railway, not Kamal.
+#
+# Retained as the sanctioned fallback host (charter -> Architecture -> Deployment).
+# The live procedure is docs/dev-to-prod.md. Do not run `kamal deploy` against
+# weightags.com; it would stand up a second, competing production.
+#
+# Before reviving this path, note two things that changed under Railway:
+#   * Production is now a SINGLE database — Solid Queue/Cache/Cable tables live
+#     in the primary schema (db/migrate/20260729000001_*). The `WEIGHTAGS_DB_*`
+#     vars below still work, but drop any expectation of separate
+#     *_cache/_queue/_cable databases.
+#   * SOLID_QUEUE_IN_PUMA below is `false` so the dedicated `job` host owns the
+#     queue. config/puma.rb now *parses* that value; it previously tested
+#     truthiness, where the string "false" is true in Ruby and would have
+#     started a second supervisor racing the dispute clock.
+# ============================================================================
+#
 # Kamal 2 deploy config for WeighTags. Fill in the host, registry, and domain,
 # then: `kamal setup` once, `kamal deploy` thereafter. Continuous deploy from
 # green main is the intended motion (charter: deploys cheap, fast, reversible).

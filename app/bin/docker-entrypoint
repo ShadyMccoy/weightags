@@ -6,8 +6,26 @@ if [ -z "${LD_PRELOAD+x}" ]; then
     export LD_PRELOAD
 fi
 
-# Prepare the database (creates primary + cache/queue/cable, runs migrations)
-# when booting the web server.
+# Honour a platform-injected PORT.
+#
+# Railway (like Fly/Heroku) injects PORT and expects the container to listen
+# there. Thruster does not read PORT: it listens on HTTP_PORT (default 80) and
+# *sets* PORT for the Rails child from TARGET_PORT (default 3000). Left alone,
+# the container would ignore PORT entirely and listen on 80. So map PORT onto
+# HTTP_PORT and keep Rails on a distinct internal port behind it.
+if [ -n "${PORT}" ] && [ -z "${HTTP_PORT}" ]; then
+    export HTTP_PORT="${PORT}"
+    export TARGET_PORT="${TARGET_PORT:-3000}"
+    # Thruster and Puma cannot share a port.
+    if [ "${TARGET_PORT}" = "${HTTP_PORT}" ]; then
+        export TARGET_PORT=3001
+    fi
+    unset PORT
+fi
+
+# Prepare the database (creates it if absent, loads db/structure.sql, then runs
+# any pending migrations) when booting the web server. One database holds the
+# app schema plus the Solid Queue/Cache/Cable tables — see config/database.yml.
 if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
     ./bin/rails db:prepare
 fi

@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1
+# Development image for WeighTags (local docker compose only — NOT for deploy).
+# Production uses ./Dockerfile + Kamal. This image bakes the gem bundle; source is
+# bind-mounted by docker-compose.yml at runtime.
+ARG RUBY_VERSION=3.3.6
+FROM docker.io/library/ruby:$RUBY_VERSION-slim
+
+WORKDIR /app
+
+# Build deps for native gems (pg → libpq-dev) plus runtime client tools.
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y \
+      build-essential git curl pkg-config libpq-dev libyaml-dev postgresql-client && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV BUNDLE_PATH=/usr/local/bundle
+
+# Match the lockfile's bundler (4.0.9) — newer than the base image ships.
+RUN gem install bundler -v 4.0.9
+
+# Install gems (all groups, incl. development/test) into the image layer.
+COPY Gemfile Gemfile.lock ./
+RUN bundle install
+
+# Postgres 16 client tools, matching the `db` service in docker-compose.yml.
+# Bookworm only ships client 15, and pg_dump refuses to dump a newer server
+# ("aborting because of server version mismatch"), which breaks the schema dump
+# that `db:migrate` writes to db/structure.sql. Kept as a separate layer after
+# `bundle install` so the gem layer stays cached.
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y curl ca-certificates gnupg && \
+    install -d /usr/share/postgresql-common/pgdg && \
+    curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+      https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
+    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] \
+https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo $VERSION_CODENAME)-pgdg main" \
+      > /etc/apt/sources.list.d/pgdg.list && \
+    apt-get update -qq && \
+    apt-get install --no-install-recommends -y postgresql-client-16 && \
+    rm -rf /var/lib/apt/lists/*
+
+EXPOSE 3000

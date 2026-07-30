@@ -34,6 +34,20 @@ RUN bundle install && \
     bundle exec bootsnap precompile --gemfile
 
 COPY . .
+
+# Restore the executable bit on bin/*.
+#
+# Git records these as mode 100755, so a build whose context comes from a git
+# checkout gets +x for free. A build whose context is an *archive of a Windows
+# working tree* does not: NTFS has no exec bit, so `railway up` (and any other
+# local-upload deploy) ships them 0644 and the build dies with
+# "./bin/rails: Permission denied" (exit 126). Docker Desktop on Windows masks
+# this locally by synthesizing 0777, so it only shows up on a real builder.
+# The final stage inherits these modes via `COPY --from=build /rails /rails`,
+# which also keeps ENTRYPOINT (bin/docker-entrypoint) and CMD (bin/thrust,
+# bin/rails) executable at runtime.
+RUN chmod +x bin/*
+
 RUN bundle exec bootsnap precompile app/ lib/
 
 # Precompile assets without the real secret (SECRET_KEY_BASE_DUMMY).
