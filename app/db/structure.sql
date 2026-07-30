@@ -51,13 +51,12 @@ CREATE TABLE public.api_keys (
     user_id bigint NOT NULL,
     name character varying NOT NULL,
     token_digest character varying NOT NULL,
-    token_last4 character varying NOT NULL,
     last_used_at timestamp(6) without time zone,
     revoked_at timestamp(6) without time zone,
     created_at timestamp(6) without time zone NOT NULL,
     updated_at timestamp(6) without time zone NOT NULL,
     public_id character varying NOT NULL,
-    scope character varying DEFAULT 'read_write'::character varying NOT NULL
+    scope character varying DEFAULT 'read_only'::character varying NOT NULL
 );
 
 
@@ -2305,6 +2304,7 @@ CREATE POLICY weighs_org_isolation ON public.weighs USING (((org_id = ANY (publi
 SET search_path TO "$user", public;
 
 INSERT INTO "schema_migrations" (version) VALUES
+('20260730010000'),
 ('20260729000001'),
 ('20260603020000'),
 ('20260603010000'),

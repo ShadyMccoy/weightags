@@ -74,7 +74,9 @@ exposes a single outward `weigh_tag` object (the internal `Tag`/`Weigh` split ne
 layered on the same domain services the UI uses (`Weighs::Poster`, `Tags::Query`), so it can't drift
 from the screen. Bearer-token auth (`ApiKey`, digest-only storage, self-serve under **API** in the nav,
 admin-only); every request binds to the key's org under the same Postgres RLS as the web app, and
-posted weighs attribute to the key's user in the audit log. Endpoints: `GET/POST /api/v1/weigh_tags`,
+posted weighs attribute to the key's user in the audit log. Tokens are `wt_live_`-prefixed, stored as
+a SHA-256 digest and nothing else, soft-revoked (never deleted), and throttled **per key** rather than
+per IP — integrations share egress addresses. Endpoints: `GET/POST /api/v1/weigh_tags`,
 `GET /api/v1/weigh_tags/:id`. Described by a public **OpenAPI 3.1** spec (`config/openapi.yaml`, served
 at `/openapi.yaml`) with a rendered **Redoc** reference at `/api/docs`. Overview:
 [`../docs/api.md`](../docs/api.md).

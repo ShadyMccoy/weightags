@@ -31,8 +31,14 @@ Bearer token, no cookies. Mint a key under **API** in the app nav (admin only) �
 shown once. Send it on every request:
 
 ```
-Authorization: Bearer wt_xxxxxxxxxxxxxxxxxxxxxxxx
+Authorization: Bearer wt_live_xxxxxxxxxxxxxxxxxxxxxxxx
 ```
+
+Header only — never a query parameter, which would end up in access logs, browser history, and
+referrers. The `wt_live_` prefix makes a leaked token recognisable in code search (and registrable
+with a secret-scanning partner program); only its SHA-256 digest is stored, so nothing can hand you
+an existing token back. **Rotation** is therefore a workflow, not a feature: mint a new key, move the
+consumer over, revoke the old one.
 
 A key is scoped to one org and tied to the user who minted it, so every weigh posted over the API
 attributes to a real person in the append-only audit log — identical to the UI. Revoking a key is
@@ -46,7 +52,21 @@ Each key has:
   - **read-only** — sync statuses (`GET`); good for an accountant's pull or a dashboard.
   - **read-write** — also upload weighs (`POST`); for a scale system or your own scripts.
 
-  A `POST` with a read-only key returns `403`.
+  A `POST` with a read-only key returns `403`. A request that names no recognisable scope mints the
+  read-only key — the weaker credential is the failure mode.
+
+Revoked keys are never deleted: the row is the record of what existed, who minted it, and when it was
+last used. `Last used` is stamped to the nearest minute, so polling doesn't turn every read into a
+write.
+
+## Rate limits
+
+**600 requests per minute, per key** — per key rather than per IP, because integrations routinely
+share egress addresses and one tenant's traffic should never throttle another's. Over the limit
+returns `429` with a `Retry-After` header (seconds). Requests presenting an invalid token are capped
+separately, per IP; a valid key is never collateral damage.
+
+The limit is an abuse backstop, not a metered quota.
 
 ## Endpoints
 
@@ -160,6 +180,7 @@ JSON with an `error` string; validation failures add a `details` array.
 | `403` | A read-only key attempted a write (`POST`). |
 | `404` | Weigh tag not visible to your org (row-level security). |
 | `422` | No partner named, or a weigh failed validation (e.g. missing BOL, duplicate for partner). |
+| `429` | Rate limit exceeded. Honour `Retry-After`. |
 
 ## Isolation
 

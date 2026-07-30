@@ -88,6 +88,8 @@ paths:
                   per_page: { type: integer, example: 50 }
         "401":
           $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
     post:
       tags: [Weigh tags]
       summary: Upload a weigh
@@ -147,6 +149,8 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "422":
           $ref: "#/components/responses/UnprocessableEntity"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
   /api/v1/weigh_tags/{id}:
     get:
@@ -172,6 +176,8 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "404":
           $ref: "#/components/responses/NotFound"
+        "429":
+          $ref: "#/components/responses/TooManyRequests"
 
 components:
   securitySchemes:
@@ -183,6 +189,12 @@ components:
         (admin only); the plaintext is shown once. Keys are scoped to one org and revocable, and carry
         a permission scope: **read-only** (sync statuses) or **read-write** (also upload weighs). Each
         key also has a non-secret **Key ID** (`wtk_…`) shown in the dashboard for identification.
+
+        Tokens are prefixed `wt_live_` so a leaked one is recognisable, and are stored only as a
+        SHA-256 digest — we cannot show you an existing token, only mint a replacement. Rotation is
+        therefore: mint a new key, move the consumer over, revoke the old one. Revocation takes
+        effect on the next request. Send the token in the `Authorization` header only, never as a
+        query parameter. Requests are rate limited **per key** (see `429`).
 
   responses:
     Unauthorized:
@@ -203,6 +215,18 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
           example: { error: "Not found." }
+    TooManyRequests:
+      description: |
+        Rate limit exceeded. Limits are per API key (600 requests/minute), not per IP, so a shared
+        egress address won't make one integration throttle another. Honour the `Retry-After` header.
+      headers:
+        Retry-After:
+          description: Seconds to wait before retrying.
+          schema: { type: integer, example: 60 }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { error: "Too many requests. Retry in 60 seconds." }
     UnprocessableEntity:
       description: No partner named, or the weigh failed validation.
       content:

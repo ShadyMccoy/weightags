@@ -46,6 +46,7 @@
           <th class="<%= th_class %> text-left">Name</th>
           <th class="<%= th_class %> text-left">Key ID</th>
           <th class="<%= th_class %> text-left">Access</th>
+          <th class="<%= th_class %> text-left">Created</th>
           <th class="<%= th_class %> text-left">Last used</th>
           <th class="<%= th_class %> text-left">Status</th>
           <th class="<%= th_class %>"></th>
@@ -57,6 +58,10 @@
             <td class="px-4 py-2 font-medium"><%= key.name %></td>
             <td class="px-4 py-2 font-mono text-muted-foreground"><%= key.public_id %></td>
             <td class="px-4 py-2"><%= key.scope_label %></td>
+            <td class="px-4 py-2 text-muted-foreground">
+              <%= fmt_datetime(key.created_at) %>
+              <span class="block text-xs">by <%= key.user.name %></span>
+            </td>
             <td class="px-4 py-2 text-muted-foreground"><%= fmt_datetime(key.last_used_at) %></td>
             <td class="px-4 py-2">
               <% if key.revoked? %>
