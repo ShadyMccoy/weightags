@@ -62,6 +62,11 @@ silently breaks the `db/structure.sql` rewrite that `db:migrate` performs.
 
 ## The flow
 
+**Today: deploys are pushed from a workstation via `railway up`.** The repo lives
+under the `sheetgenius` org, so wiring Railway's GitHub app needs org-level
+authorization that hasn't been granted yet. Push-to-deploy is the intended end
+state, not the current one.
+
 ```
 edit locally
    │  cd app && docker compose run --rm web bundle exec rubocop
@@ -69,8 +74,11 @@ edit locally
    ▼
 commit + push to main  (source of truth: GitHub sheetgenius/weightags)
    ▼
-Railway builds app/Dockerfile and deploys automatically
-   │  railway logs --deployment          # watch the build/boot
+deploy from a CLEAN tree, stamped with the commit
+   │  cd app
+   │  git status --porcelain          # must be empty — see below
+   │  railway up -m "$(git rev-parse --short HEAD) $(git log -1 --format=%s)"
+   │  railway logs --build            # watch the build
    ▼
 prove it  →  the change is live only after verification passes
 ```
@@ -78,6 +86,19 @@ prove it  →  the change is live only after verification passes
 Deploys are rolling: Railway starts the new container, waits for the `/up`
 health check, then drains the old one. A failed health check leaves the previous
 deployment serving.
+
+### Why the clean-tree rule is not optional
+
+`railway up` uploads the **working tree**, not the committed state. It honours
+`.gitignore`, but any uncommitted edit ships silently, and a CLI deployment
+carries no `repo`/`commitHash` metadata — so there is no way after the fact to
+ask *which commit is serving*. For an app whose value proposition is an audit
+trail, "we can't tell what's in production" is the wrong failure mode.
+
+Deploying only from a clean tree, with the short SHA in the deployment message,
+restores that link cheaply: `railway deployment list` then reads as a commit log.
+Connecting GitHub removes the discipline requirement entirely, which is why it
+remains the goal.
 
 ## Railway service configuration
 
@@ -229,13 +250,21 @@ decisive field:
 
 | Claim | Command | Proof |
 |---|---|---|
-| deploy succeeded | `railway status` / `railway logs --deployment` | deployment state `SUCCESS`, health check passed |
+| deploy succeeded | `railway deployment list --service weightags-web` | newest row is `SUCCESS` |
+| exact commit serving | same command | newest row's message starts with the short SHA you deployed (only if the clean-tree rule above was followed) |
 | app healthy | `curl -fsS https://weightags.com/up` | HTTP 200 |
 | serving our cert | `curl -vI https://weightags.com 2>&1 \| grep -i "subject\|issuer"` | CN is `weightags.com`, not `*.up.railway.app` |
-| database migrated | `railway run bin/rails db:migrate:status` | every migration `up`, incl. `20260729000001` |
-| jobs running | `railway run bin/rails runner 'puts SolidQueue::Process.count'` | ≥ 1 live supervisor |
-| dispute clock armed | `railway run bin/rails runner 'puts SolidQueue::RecurringTask.pluck(:key)'` | includes `dispute_clock` |
+| database migrated | `railway ssh --service weightags-web -- ./bin/rails db:migrate:status` | every migration `up`, incl. `20260729000001` |
+| jobs running | `railway ssh --service weightags-web -- ./bin/rails runner 'puts SolidQueue::Process.count'` | 4 processes (Supervisor(fork), Dispatcher, Worker, Scheduler) |
+| dispute clock armed | `railway ssh --service weightags-web -- ./bin/rails runner 'puts SolidQueue::RecurringTask.pluck(:key)'` | includes `dispute_clock` |
 | renders | browser screenshot of `/` | screenshot artifact |
+
+Use `railway ssh`, **not** `railway run`: `railway run` executes locally with
+Railway's env injected, and this workstation has no Ruby. `railway ssh` runs
+inside the deployed container, which is also what makes it a proof about
+production rather than about a laptop. Note the supervisor's `kind` is
+`Supervisor(fork)` — querying for `kind: 'Supervisor'` returns 0 and looks like
+a dead queue.
 
 A deployment marked `SUCCESS` means *the health check answered*, not that the
 feature works. Verify the specific claim.
