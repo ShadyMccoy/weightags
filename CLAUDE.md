@@ -41,8 +41,11 @@ carry it. The charter is the arbiter; this file and the roadmap defer to it.
 
 ## Load-bearing decisions (all detailed in the docs above)
 
-- **Stack:** Rails 8 + Hotwire (Turbo + Stimulus) + Postgres + Solid Queue, deployed with Kamal.
-  Boring-by-default; new infra needs justification. (charter → *Architecture*)
+- **Stack:** Rails 8 + Hotwire (Turbo + Stimulus) + Postgres + Solid Queue. **Deployed to Railway**
+  (one Docker service from `app/Dockerfile` + one managed Postgres), which the charter allows as a
+  host-agnostic managed-PaaS target; `app/config/deploy.yml` (Kamal) is a retained, unused escape
+  hatch. Boring-by-default; new infra needs justification. (charter → *Architecture*;
+  docs/dev-to-prod.md)
 - **Build posture:** build the **feature-complete SaaS first, then listen for signal**. A thin
   money-adjacent tool yields dishonest signal; the scope is contained enough that completeness is
   cheap. (roadmap → *How to read*)
@@ -67,6 +70,7 @@ carry it. The charter is the arbiter; this file and the roadmap defer to it.
 
 ## Working conventions
 
-- Platform is Windows (PowerShell). Production target is Linux (Docker via Kamal).
+- Platform is Windows (PowerShell), with no local Ruby or Postgres server — use
+  `cd app && docker compose ...` to run the gate. Production target is Linux (Docker on Railway).
 - Once scaffolded, the app lives in `app/` (Rails); the prototype stays design-only in `docs/`.
 - Commit/push only when asked.

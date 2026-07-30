@@ -270,12 +270,92 @@ deploy (or explicitly deferred to the next deploy window).
 
 ---
 
+## CG-7 (P1) — Row-level security is inert in production: no non-superuser role exists
+
+*Found July 2026 while deploying to Railway. Pre-existing; not introduced by the deploy work.*
+
+**The claim vs. the code.** The charter calls Postgres RLS "the default safety net underneath"
+app-level scoping, and `db/migrate/20260602067000_enable_row_level_security.rb` says the app
+"should connect as the non-superuser `weightags_app` role in production so these policies bind
+(superusers bypass RLS by design)." Neither half of that is achievable as written.
+
+**Evidence.**
+
+1. **Nothing ever switches role.** `app/controllers/concerns/tenancy.rb:23–25` and
+   `app/controllers/api/v1/base_controller.rb:45` set the `app.accessible_org_ids` GUC that the
+   policies read, but no code anywhere issues `SET ROLE`/`SET LOCAL ROLE`. Grep for
+   `SET ROLE|set_role|weightags_app` across `app/ lib/ config/` returns only the migration and
+   `test/models/row_level_security_test.rb`.
+2. **The role cannot be connected as.** The migration creates it `NOLOGIN NOSUPERUSER` with no
+   password, so `DATABASE_URL` can never point at it. There is no second login role either.
+3. **The role does not survive a fresh database.** `db/structure.sql` is produced by
+   `pg_dump --schema-only --no-privileges`, which dumps neither roles nor grants. `weightags_app`
+   appears **0** times in `structure.sql`, and there are **0** `GRANT` statements. The policies,
+   `FORCE ROW LEVEL SECURITY`, and `app_accessible_org_ids()` all *do* survive — so a fresh
+   production database has armed policies, no role to enforce them against, and no grants.
+4. **The platform connection is a superuser.** Railway's managed Postgres issues `DATABASE_URL` as
+   the `postgres` superuser. Superusers bypass RLS unconditionally — `FORCE ROW LEVEL SECURITY`
+   raises the bar only for the table *owner*, not for superusers or `BYPASSRLS` roles.
+
+**Confirmed empirically**, not inferred. Booting the production image against a fresh Postgres 16
+with a platform-shaped `DATABASE_URL` and querying that database directly:
+
+```
+current_user | is_superuser        ->  postgres | on
+weightags_app in pg_roles          ->  NO - role absent
+relrowsecurity/relforcerowsecurity ->  t / t  on tags, weighs, invoice_batches
+pg_policies                        ->  3
+```
+
+Three armed, forced policies; no role to enforce them against; a superuser connection.
+
+Re-confirmed on the **live Railway deployment** (Postgres 18.4): `is_superuser` is `on` there too.
+
+**Net effect.** In production the policies are never evaluated. Tenancy rests entirely on the
+app-level scoping in `Tenancy` — which is the primary control and does work — but the defense-in-depth
+layer the charter promises is off, and nothing surfaces that fact.
+
+**Why it matters.** This is the layer that is supposed to contain a missing `.where(org:)` in one
+controller action. A neutral multiplayer system of record leaking one counterparty's weights to
+another is the product's worst failure mode, and RLS is the stated backstop.
+
+**It also silently breaks the gate.** Because the role is absent from `structure.sql`,
+`RowLevelSecurityTest` errors with `PG::UndefinedObject: role "weightags_app" does not exist` on any
+database built by `db:prepare` (3 errors in a 129-test run). The suite reports errors, not failures,
+so "129 runs, 0 failures" reads as green at a glance. Whatever environment previously ran this
+suite must have had the role created out of band.
+
+**Fix design.**
+
+1. Move role creation out of a one-time migration into something every environment gets: either a
+   dedicated `db/roles.sql` applied by `db:prepare` (and by the deploy), or an idempotent
+   `ActiveRecord` initializer-time `CREATE ROLE ... IF NOT EXISTS` guard. It must survive a
+   `structure.sql` load, and grants must cover tables added later (`ALTER DEFAULT PRIVILEGES`).
+2. Give the app a **login** role: `weightags_app` with a password, `NOSUPERUSER NOBYPASSRLS`, owning
+   nothing. Point `DATABASE_URL` at it and keep the superuser credential for migrations only. On
+   Railway that means a second connection string — migrations run as owner via the entrypoint,
+   requests run as `weightags_app`. Rails supports this with a separate `migration` role or a
+   `preDeployCommand` that uses the privileged URL.
+3. Alternatively (weaker, but no new credential): `SET LOCAL ROLE weightags_app` inside the same
+   transaction that sets the GUC. Rejected as the primary fix — it needs every request wrapped in a
+   transaction, and grants must then be maintained for every new table (the `solid_*` tables added
+   in `20260729000001` have none).
+4. Add a guard test that **fails loudly** if the effective connection can bypass RLS, e.g. assert
+   `current_setting('is_superuser') = 'off'` in production boot, so this can never regress silently.
+
+**Gate.** `RowLevelSecurityTest` green on a database created purely by `bin/rails db:prepare` with no
+manual setup; a new test asserting a superuser connection is rejected/flagged in production; `bin/ci`
+green with **0 errors** as well as 0 failures.
+
+---
+
 ## Suggested order & scope notes
 
 | Order | Task | Why this order |
 |---|---|---|
 | 1 | CG-2 | Self-contained, highest blast-radius-per-line; unblocks nothing else. |
 | 2 | CG-1a → 1b → 1c | The launch blocker. 1a and 1b are the substance; 1c is config. |
+| 2.5 | CG-7 | Also a launch blocker, and it currently hides 3 errors in `bin/ci`. Independent of the others — can go in parallel. |
 | 3 | CG-4 | Touches the same locking idiom as CG-1a; do while the pattern is fresh. |
 | 4 | CG-3 | Mechanical once the rule is decided; sweep all services in one pass. |
 | 5 | CG-5 | Needs a product decision; doc-only if the recommendation is taken. |

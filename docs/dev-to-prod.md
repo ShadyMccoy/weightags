@@ -4,16 +4,23 @@ How a change gets from an edit to `weightags.com`. This is the operational
 contract; the [charter](charter.md) governs *what* we build, this governs *how it
 ships*. Keep it boring and repeatable.
 
+**Host: Railway.** The charter (→ *Architecture*) names Kamal-on-a-VPS as the
+reference deploy and explicitly allows a managed PaaS as "an equally valid target
+… the architecture is host-agnostic." Railway is that target: one Docker service
+built from `app/Dockerfile`, one managed Postgres, TLS and rolling deploys from
+the platform. `app/config/deploy.yml` (Kamal) is retained as an unused escape
+hatch — nothing in the app depends on the host beyond `DATABASE_URL` and `PORT`.
+
 ## Environments
 
 | Environment | What it is | Who sees it | Data |
 |---|---|---|---|
-| **development** | the hosted workcell (source checkout + app-scoped tooling) | just us | throwaway |
-| **preview** | a live deploy at `weightags.preview.bittergrid.com` | shareable, **not** production | preview DB |
-| **production** | the live public app at `weightags.com` | real users | managed Postgres |
+| **development** | local checkout; `cd app && docker compose up` (Rails + Postgres 16) | just us | throwaway |
+| **preview** | a Railway *environment* off the same service, on its own `*.up.railway.app` URL | shareable, **not** production | its own Postgres |
+| **production** | the live public app at `weightags.com` | real users | Railway managed Postgres |
 
-There is no always-on staging. Preview is the dress rehearsal; it is only
-"live" once routing + HTTP + app smoke all agree.
+There is no always-on staging. Preview is the dress rehearsal; it is only "live"
+once routing + HTTP + app smoke all agree.
 
 ## The gate: `bin/ci`
 
@@ -27,89 +34,215 @@ There is no always-on staging. Preview is the dress rehearsal; it is only
 5. **Security: Brakeman** — static analysis, `--exit-on-warn --exit-on-error`
    (note: `bin/brakeman` uses `--ensure-latest`, so an out-of-date brakeman gem
    fails the step for a non-security reason — keep the gem current)
-6. **Tests** — `bin/rails test` (36 files: model/service + integration + system)
+6. **Tests** — `bin/rails test` (model/service + integration; system tests are a
+   separate `bin/rails test:system` run and need a real browser)
 7. **Seeds** — `env RAILS_ENV=test bin/rails db:seed:replant`
 
-Nothing reaches production that is not green here **and** proven on preview.
+Nothing reaches production that is not green here.
 
-### Where each step actually runs
+### Running it without a local Ruby
 
-The workcell has Ruby + gems but **no local Postgres server** (client only, no
-sudo/docker), so it can run steps 2–5 (style + security) but **not** steps 6–7
-(the DB-backed suite). Today those DB steps are validated by the **preview
-deploy** (migrations + app smoke + database smoke).
+The Windows workstation has no Ruby and no Postgres server — `docker compose`
+supplies both. Run any gate step inside the dev image:
 
-> **Recommended next step (not yet done):** add a GitHub Actions workflow that
-> runs the full `bin/ci` with a Postgres service container on every PR and push
-> to `main`, so the test suite runs automatically instead of relying on preview
-> smoke. This is the one missing piece of a complete gate for a money-adjacent
-> app. See "CI" below.
+```bash
+cd app
+docker compose up -d db
+docker compose run --rm -e RAILS_ENV=test web bash -c "bundle exec rails db:prepare && bundle exec rails test"
+docker compose run --rm web bundle exec rubocop
+```
+
+`Dockerfile.dev` installs `postgresql-client-16` from PGDG on purpose: Debian
+bookworm ships client 15, and `pg_dump` refuses to dump a newer server, which
+silently breaks the `db/structure.sql` rewrite that `db:migrate` performs.
+
+> **Still missing:** a GitHub Actions workflow running `bin/ci` against a
+> `postgres` service on every PR and push to `main`. Until that exists the gate
+> is only as good as the person who remembered to run it.
 
 ## The flow
 
 ```
-edit in workcell
-   │  run the checks you can here:  cd app && bin/rubocop && bin/bundler-audit
-   │                                bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error
+edit locally
+   │  cd app && docker compose run --rm web bundle exec rubocop
+   │           docker compose run --rm -e RAILS_ENV=test web bash -c "bundle exec rails db:prepare && bundle exec rails test"
    ▼
-commit to main  (source of truth: GitHub sheetgenius/weightags)
+commit + push to main  (source of truth: GitHub sheetgenius/weightags)
    ▼
-preview deploy  →  verify live  →  screenshot + /up
-   │  bitter app deploy --dry-run --database --host weightags.preview.bittergrid.com
-   │  bitter app deploy --confirm  --database --host weightags.preview.bittergrid.com
+Railway builds app/Dockerfile and deploys automatically
+   │  railway logs --deployment          # watch the build/boot
    ▼
-production deploy  (one explicit confirmation)
-   │  bitter app deploy --dry-run --database          # review the plan
-   │  →  ask: "Deploy these changes to production?"
-   │  bitter app deploy --confirm --database
-   │  bitter grid services wait weightags.com          # status == verified
-   ▼
-prove it  →  the site is live only after verification passes
+prove it  →  the change is live only after verification passes
 ```
 
-### Deploy commands
+Deploys are rolling: Railway starts the new container, waits for the `/up`
+health check, then drains the old one. A failed health check leaves the previous
+deployment serving.
 
-```bash
-cd /workspace/weightags-com
+## Railway service configuration
 
-# preview (safe, repeatable, not production)
-bitter app deploy --dry-run --database --host weightags.preview.bittergrid.com
-bitter app deploy --confirm --database --host weightags.preview.bittergrid.com
+One service, built from the Dockerfile, plus a Postgres database.
 
-# production (dry-run first, then one confirmation)
-bitter app deploy --dry-run --database
-bitter app deploy --confirm --database
-bitter grid services wait weightags.com
-```
+| Setting | Value | Why |
+|---|---|---|
+| Root directory | `/app` | the Rails app is a subdirectory; the Dockerfile's `COPY . .` expects `app/` as the build context |
+| Config as code | `app/railway.json` | builder `DOCKERFILE`, health check `/up`, 1 replica, restart `ON_FAILURE` |
+| Replicas | **1** | Solid Queue runs inside Puma; a second replica means a second supervisor on the same queue — see below |
 
-`--database` is required — `ops/manifest.json` declares managed Postgres and the
-migration command. Factory owns credential injection, the Rails master key,
-database provisioning, migrations, and smoke; do not paste production secrets
-anywhere.
+### Environment variables
 
-If a deploy blocks on Factory-managed plumbing (master-key custody, DB
-provisioning, runtime-env), that is a platform setup issue — run app-level
-Factory deploy repair with the blocker code and retry; do not ask for
-production secrets. Only an app-owned external credential (e.g. a third-party
-API key) goes through app Credentials / Environment.
+| Variable | Value | Notes |
+|---|---|---|
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` | reference the Postgres service, don't paste a literal |
+| `SECRET_KEY_BASE` | 128 hex chars | generate with `openssl rand -hex 64`; **not** in git |
+| `SOLID_QUEUE_IN_PUMA` | `true` | runs the job supervisor (and the dispute clock) in the web process |
+| `APP_HOST` | `weightags.com` | drives mailer links **and** `config.hosts`; set to the preview URL on preview |
+| `RAILS_MAX_THREADS` | `5` | Puma threads and the Postgres connection cap |
+| `RAILS_LOG_LEVEL` | `info` | `debug` logs PII — don't, in production |
+
+`RAILS_ENV=production` is already baked into the Dockerfile. `RAILS_MASTER_KEY`
+is **not** set and is not needed: nothing in the app reads
+`Rails.application.credentials` (every use in `config/` is commented out), and
+`SECRET_KEY_BASE` is supplied directly. `config/credentials.yml.enc` is
+effectively orphaned — its `master.key` is not in this checkout. If you ever add
+a real credential, generate a fresh credentials file and put the key in Railway.
+
+### Why one replica
+
+`config/recurring.yml` schedules `DisputeClockJob` every 5 minutes, and
+[`correctness-gaps.md`](correctness-gaps.md) CG-1 records that `Tags::Clock` is
+idempotent *only under a single serial worker*. Two supervisors racing the clock
+can auto-accept twice, or auto-accept a tag someone just disputed — the precise
+failure the product promises not to have. Until CG-1 is closed, keep
+`numReplicas: 1` and do not add a second job service.
+
+`config/puma.rb` parses `SOLID_QUEUE_IN_PUMA` rather than testing truthiness,
+because in Ruby the string `"false"` is truthy — a bare `if ENV[...]` would start
+the in-Puma supervisor even where the config says not to.
+
+### One database, not four
+
+Production runs a single Postgres. Solid Queue, Solid Cache, and Solid Cable
+share it; their tables live in the primary schema via
+`db/migrate/20260729000001_create_solid_queue_cache_and_cable_tables.rb`.
+
+This replaced a four-database layout that could not bootstrap: it pointed
+`cache`/`queue`/`cable` at `migrations_paths` directories that do not exist in
+this repo, and because `config.active_record.schema_format = :sql` (load-bearing
+for the audit-log trigger) the loader looked for
+`db/{cache,queue,cable}_structure.sql`, which also do not exist. On a fresh
+production database the `solid_*` tables were therefore never created — the
+dispute clock would not run, `:solid_cache_store` reads would raise, and Turbo
+Stream broadcasts would fail. Development never caught it because development
+uses `:memory_store` and the default async job adapter, and never starts
+`bin/jobs`. The generator outputs (`db/{queue,cache,cable}_schema.rb`) stay in
+the repo as upstream reference only; nothing loads them.
+
+### Row-level security does **not** bind in this configuration
+
+Railway issues `DATABASE_URL` as the `postgres` **superuser**, and superusers bypass RLS
+unconditionally. The RLS policies on `tags`/`weighs`/`invoice_batches` are present and armed in a
+fresh database, but they are never evaluated, and the `weightags_app` role they target does not even
+exist there (`pg_dump --schema-only --no-privileges` dumps neither roles nor grants).
+
+Tenancy therefore rests entirely on the app-level scoping in
+`app/controllers/concerns/tenancy.rb`, which is the primary control and does work. The
+defense-in-depth layer the charter promises is off. Tracked as
+[`correctness-gaps.md`](correctness-gaps.md) **CG-7 (P1)** — close it before treating RLS as a
+guarantee, and do not describe the deployment as RLS-protected until then.
+
+### Active Storage is unused — and would be ephemeral if it weren't
+
+`config.active_storage.service = :local`, so uploads land on the container
+filesystem, which Railway replaces on every deploy. Nothing in the app attaches
+files today (no `has_one_attached`/`has_many_attached` anywhere), so this is
+harmless now. **Before shipping any upload feature**, attach a Railway volume at
+`/rails/storage` or switch the service to S3 — the Kamal config carried a
+`weightags_storage` volume for exactly this reason and Railway has no equivalent
+by default.
+
+Related: boot logs a benign `Using vips to process variants requires the libvips
+library` warning. `image_processing` is a stock Gemfile entry and the production
+image has no libvips; since nothing processes variants, it is noise. Installing
+libvips only becomes necessary alongside image uploads.
+
+### Ports
+
+Railway injects `PORT` and expects the container to listen there. Thruster does
+not read `PORT` — it listens on `HTTP_PORT` (default 80) and *sets* `PORT` for
+the Rails child from `TARGET_PORT` (default 3000). `bin/docker-entrypoint`
+therefore maps `PORT` onto `HTTP_PORT` and keeps Puma on a distinct port behind
+it. Nothing to configure in the dashboard.
+
+### Line endings
+
+`.gitattributes` pins `app/bin/*`, the Dockerfiles, and `app/db/structure.sql` to
+LF. Windows checkouts use `core.autocrlf=true`, and a CRLF shebang makes the
+Linux kernel look for an interpreter named `/bin/bash -e\r` — the container dies
+with "bad interpreter". Git already stored these as LF; the attributes stop a
+future checkout or commit from flipping them.
+
+## Domain: weightags.com via Cloudflare
+
+**Current state (July 2026):** the app is live on the platform-assigned
+`https://weightags-web-production.up.railway.app`. `weightags.com` is registered
+with DNS on Cloudflare (`kami`/`keaton.ns.cloudflare.com`) but publishes **no A
+record and no www** — nothing is served from it yet.
+
+> **Blocked: custom domains are plan-gated.** `railway domain weightags.com`
+> returns `Unauthorized` for both the apex and `www`, while `railway domain` with
+> no argument successfully generated the `*.up.railway.app` domain, and
+> `whoami`/`status`/`variables`/`up` all work. The custom-domain capability
+> specifically is unavailable on the current workspace plan (Trial allows 1,
+> Hobby 2 per service). Upgrading the workspace unblocks the steps below; no code
+> change is involved.
+
+Railway needs **two** records, and the domain will not verify with only the
+CNAME — a missing TXT returns 404 even after the CNAME resolves.
+
+1. In Railway → service → Settings → Networking → **Custom Domain**, add
+   `weightags.com`. Railway shows a target like `xxxxxx.up.railway.app` plus a
+   TXT verification record.
+2. In Cloudflare DNS for `weightags.com`:
+   - `CNAME  @    xxxxxx.up.railway.app` — Cloudflare flattens CNAMEs at the
+     zone apex automatically, so this is legal here even though the DNS spec
+     forbids apex CNAMEs.
+   - the `TXT` record exactly as Railway gives it.
+   - `CNAME  www  xxxxxx.up.railway.app` if you want www to work too (add it as
+     a second custom domain in Railway; Hobby allows 2 per service).
+3. **Set the proxy to DNS only (grey cloud) first.** Proxied (orange cloud)
+   domains can prevent Railway from issuing a Let's Encrypt certificate, and
+   Cloudflare then serves traffic using Railway's default `*.up.railway.app`
+   cert. Get a clean Railway-issued cert on grey cloud, and only then decide
+   whether you want Cloudflare in front.
+4. If you do enable the orange cloud, set Cloudflare SSL/TLS to **Full** — not
+   Full (Strict). Full (Strict) only works with a Cloudflare origin certificate
+   installed on the origin, which Railway does not do.
+
+After DNS propagates, set `APP_HOST=weightags.com` so mailer links and
+`config.hosts` match, and confirm the cert is Railway's, not the wildcard.
 
 ## Proof — what counts as "live"
 
-A push, build, or HTTP 200 alone proves nothing. Claim → command → decisive field:
+A push, a green build, or an HTTP 200 alone proves nothing. Claim → command →
+decisive field:
 
 | Claim | Command | Proof |
 |---|---|---|
-| production verified | `bitter grid services wait weightags.com` | `status == verified` (not `settled_unverified`) |
-| exact commit serving | `bitter grid services verify-external weightags.com` | release/header matches the commit |
-| app healthy | `curl -fsS https://weightags.com/up` + app smoke | HTTP success + smoke pass |
-| database migrated | `bitter app managed-box database --app weightags.com --action smoke` | migration + smoke pass |
-| renders | `bitter browser screenshot` | screenshot artifact |
+| deploy succeeded | `railway status` / `railway logs --deployment` | deployment state `SUCCESS`, health check passed |
+| app healthy | `curl -fsS https://weightags.com/up` | HTTP 200 |
+| serving our cert | `curl -vI https://weightags.com 2>&1 \| grep -i "subject\|issuer"` | CN is `weightags.com`, not `*.up.railway.app` |
+| database migrated | `railway run bin/rails db:migrate:status` | every migration `up`, incl. `20260729000001` |
+| jobs running | `railway run bin/rails runner 'puts SolidQueue::Process.count'` | ≥ 1 live supervisor |
+| dispute clock armed | `railway run bin/rails runner 'puts SolidQueue::RecurringTask.pluck(:key)'` | includes `dispute_clock` |
+| renders | browser screenshot of `/` | screenshot artifact |
 
-`--no-wait` means *accepted*, not *live*. `settled_unverified` is a failure.
+A deployment marked `SUCCESS` means *the health check answered*, not that the
+feature works. Verify the specific claim.
 
-## CI (recommended, deferred)
+## Rollback
 
-Not yet wired. When added, `.github/workflows/ci.yml` should run `bin/ci`
-against a `postgres` service, on `pull_request` and `push` to `main`, and gate
-merges. Until then, treat a green preview deploy as the test gate and keep the
-workcell static checks (steps 2–5) green before every commit.
+Railway keeps previous deployments: service → Deployments → **Redeploy** on the
+last good one, or `railway redeploy`. Rolling back the image does **not** roll
+back a migration — write migrations so the previous release can still run
+against the new schema (additive first, destructive in a later deploy).

@@ -80,10 +80,20 @@ at `/openapi.yaml`) with a rendered **Redoc** reference at `/api/docs`. Overview
 [`../docs/api.md`](../docs/api.md).
 
 ## Deploy
-Dockerized, deployed with **Kamal 2** (`config/deploy.yml`, `Dockerfile`, `.kamal/secrets`): one app
-container + a job host (`bin/jobs` for the dispute clock) + a Postgres accessory, zero-downtime via
-kamal-proxy with `/up` health checks. Production should connect as the non-superuser `weightags_app`
-role so RLS binds. Fill in host/registry/domain, then `kamal setup` / `kamal deploy`.
+Dockerized, deployed to **Railway**: one service built from `./Dockerfile` (service root `/app`,
+config in `railway.json`) plus one managed Postgres, rolling deploys gated on the `/up` health check.
+Solid Queue runs inside Puma (`SOLID_QUEUE_IN_PUMA=true`) at **one replica** — a second supervisor
+would race the dispute clock. Production uses a single database; Solid Queue/Cache/Cable tables live
+in the primary schema. Full procedure, env vars, and the `weightags.com` DNS setup:
+[`../docs/dev-to-prod.md`](../docs/dev-to-prod.md).
+
+`config/deploy.yml` (Kamal 2) is retained but unused; nothing in the app depends on the host beyond
+`DATABASE_URL` and `PORT`.
+
+> **RLS caveat:** the policies on `tags`/`weighs`/`invoice_batches` do **not** currently bind in
+> production — the platform connection is a superuser and the `weightags_app` role does not survive a
+> `structure.sql` load. Tenancy rests on app-level scoping. See
+> [`../docs/correctness-gaps.md`](../docs/correctness-gaps.md) **CG-7**.
 
 ## Develop
 

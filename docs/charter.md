@@ -566,7 +566,13 @@ remain attributed to them even after they leave their org — which is why the a
 
 ### Deployment
 
-Deployed with **Kamal 2** (the Rails 8 default) — a Dockerized app shipped to a single small VPS to start, scaling to a few app containers behind a load balancer if volume warrants. Postgres runs as a managed instance (or a second box) so the database is backed up and operated independently of app deploys. A managed PaaS (Fly, Render) is an equally valid target and may be the faster path for v0; the architecture is host-agnostic. Kamal gives zero-downtime deploys, easy rollback, and no proprietary lock-in — consistent with *boring by default* and *deploys are cheap, fast, frequent, and reversible* below.
+The architecture is **host-agnostic**: the app needs a Linux Docker host, a `DATABASE_URL`, and a `PORT`, and nothing more. Two targets are sanctioned.
+
+**Chosen for v0: Railway** (decided July 2026). One Docker service built from `app/Dockerfile` plus one managed Postgres, with platform-managed TLS and rolling deploys gated on the `/up` health check. This is the "managed PaaS is the faster path for v0" option below, taken: it removes host provisioning, certificate renewal, and registry management from the critical path at the cost of some proprietary surface — acceptable because the lock-in is a `railway.json` and two environment variables, and the Kamal path stays available. Solid Queue runs inside Puma at a single replica; a second replica would put two supervisors on the dispute clock, which is only idempotent under a single serial worker (see *correctness-gaps* CG-1). Operational detail lives in **docs/dev-to-prod.md**.
+
+**Reference alternative: Kamal 2** (the Rails 8 default) — a Dockerized app shipped to a single small VPS, scaling to a few app containers behind a load balancer if volume warrants, with Postgres as a managed instance or a second box. `app/config/deploy.yml` is kept current enough to fall back to. Kamal gives zero-downtime deploys, easy rollback, and no proprietary lock-in.
+
+Either way the principle holds: *boring by default*, and *deploys are cheap, fast, frequent, and reversible*.
 
 ### Design prototype
 
