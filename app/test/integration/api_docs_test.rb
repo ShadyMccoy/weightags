@@ -18,6 +18,12 @@ class ApiDocsTest < ActionDispatch::IntegrationTest
     assert_match openapi_spec_path, response.body
   end
 
+  test "the landing page points developers at the reference" do
+    get root_path
+    assert_response :success
+    assert_select "a[href=?]", api_docs_path
+  end
+
   test "the spec is a valid OpenAPI 3.1 document describing the live endpoints" do
     doc = YAML.load_file(ApiDocsController::SPEC_PATH)
 

@@ -89,3 +89,22 @@
     </div>
   </div>
 </section>
+
+<%# Developer entry point. The Redoc page is a standalone document, so it loads
+    outside Turbo rather than being morphed into this one. %>
+<section class="px-6 pb-16 max-w-6xl mx-auto">
+  <div class="bg-card border border-border rounded-lg p-6 sm:flex sm:items-center sm:justify-between gap-6">
+    <div class="max-w-xl">
+      <h2 class="text-lg font-medium mb-1.5">Post weighs straight from your own system</h2>
+      <p class="text-sm text-muted-foreground">
+        Every weigh tag is reachable over a plain JSON API — push tickets from your
+        scale software or ERP and read the reconciliation status back. Bearer-token
+        auth, and an OpenAPI 3.1 spec you can import into Postman.
+      </p>
+    </div>
+    <div class="mt-4 sm:mt-0 shrink-0">
+      <%= link_to "API documentation", api_docs_path,
+            class: btn_class(:secondary, size: :md), data: { turbo: false } %>
+    </div>
+  </div>
+</section>
