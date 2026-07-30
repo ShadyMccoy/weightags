@@ -205,43 +205,49 @@ future checkout or commit from flipping them.
 
 ## Domain: weightags.com via Cloudflare
 
-**Current state (July 2026):** the app is live on the platform-assigned
-`https://weightags-web-production.up.railway.app`. `weightags.com` is registered
-with DNS on Cloudflare (`kami`/`keaton.ns.cloudflare.com`) but publishes **no A
-record and no www** — nothing is served from it yet.
+**Live.** `https://weightags.com` serves the app: `/`, `/up`, and `/sign_up` all
+return 200, and `/` returning 200 is what proves `config.hosts` accepts the apex.
+The platform-assigned `weightags-web-production.up.railway.app` still works too.
 
-> **Blocked: custom domains are plan-gated.** `railway domain weightags.com`
-> returns `Unauthorized` for both the apex and `www`, while `railway domain` with
-> no argument successfully generated the `*.up.railway.app` domain, and
-> `whoami`/`status`/`variables`/`up` all work. The custom-domain capability
-> specifically is unavailable on the current workspace plan (Trial allows 1,
-> Hobby 2 per service). Upgrading the workspace unblocks the steps below; no code
-> change is involved.
+### How it was actually wired
 
-Railway needs **two** records, and the domain will not verify with only the
-CNAME — a missing TXT returns 404 even after the CNAME resolves.
+Via **Railway's built-in Cloudflare integration** (Settings → Networking → add
+`weightags.com`, target port **8080**), not by hand-entering DNS records. The
+integration created the apex record itself. Two things followed from that, both
+worth knowing because they contradict the generic instructions:
 
-1. In Railway → service → Settings → Networking → **Custom Domain**, add
-   `weightags.com`. Railway shows a target like `xxxxxx.up.railway.app` plus a
-   TXT verification record.
-2. In Cloudflare DNS for `weightags.com`:
-   - `CNAME  @    xxxxxx.up.railway.app` — Cloudflare flattens CNAMEs at the
-     zone apex automatically, so this is legal here even though the DNS spec
-     forbids apex CNAMEs.
-   - the `TXT` record exactly as Railway gives it.
-   - `CNAME  www  xxxxxx.up.railway.app` if you want www to work too (add it as
-     a second custom domain in Railway; Hobby allows 2 per service).
-3. **Set the proxy to DNS only (grey cloud) first.** Proxied (orange cloud)
-   domains can prevent Railway from issuing a Let's Encrypt certificate, and
-   Cloudflare then serves traffic using Railway's default `*.up.railway.app`
-   cert. Get a clean Railway-issued cert on grey cloud, and only then decide
-   whether you want Cloudflare in front.
-4. If you do enable the orange cloud, set Cloudflare SSL/TLS to **Full** — not
-   Full (Strict). Full (Strict) only works with a Cloudflare origin certificate
-   installed on the origin, which Railway does not do.
+- **No TXT verification record exists** — not at the apex, not at `_railway`, not
+  at `_acme-challenge` — and the domain verified anyway. Railway's public docs say
+  a custom domain "will not verify with only the CNAME in place" and that a
+  missing TXT yields a 404; that applies to the manual path. The integration
+  appears to prove ownership through the Cloudflare API instead. Do not go hunting
+  for a TXT record on this path.
+- **The record is proxied (orange cloud).** The apex resolves to Cloudflare IPs
+  (`104.21.x`, `172.67.x`), so the chain is Cloudflare → Railway edge; responses
+  carry both `server: cloudflare` and `x-railway-edge`. The certificate served is
+  `CN=weightags.com` from Let's Encrypt, but it is **Cloudflare's Universal SSL
+  cert, not Railway's**. That is fine, and it means "is the cert Railway's?" is
+  the wrong question here.
 
-After DNS propagates, set `APP_HOST=weightags.com` so mailer links and
-`config.hosts` match, and confirm the cert is Railway's, not the wildcard.
+**If you ever switch that record to DNS only (grey cloud)**, Railway issues and
+serves its own cert and the chain shortens. **If you keep the orange cloud**, set
+Cloudflare SSL/TLS to **Full** — Full (Strict) will break once Railway presents
+its own certificate on the origin.
+
+### Expect a delay, not a misconfiguration
+
+Immediately after adding the domain, Railway's edge answers with its branded 404
+("The train has not arrived at the station… confirm that your domain has
+provisioned"). Traffic is already reaching Railway at that point —
+`x-railway-request-id` is present in the response — it just has not finished
+provisioning. It cleared on its own in about a minute. Read that page literally
+and wait before changing DNS; chasing a "missing" record here wastes time.
+
+`www.weightags.com` is **not** configured (it does not resolve). Add it as a
+second custom domain in Railway if wanted.
+
+`APP_HOST` is set to `weightags.com`, which drives both mailer links and
+`config.hosts`.
 
 ## Proof — what counts as "live"
 
