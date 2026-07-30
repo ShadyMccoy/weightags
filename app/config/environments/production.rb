@@ -51,14 +51,20 @@ Rails.application.configure do
 
   # Replace the default in-process and non-durable queuing backend for Active Job.
   config.active_job.queue_adapter = :solid_queue
-  config.solid_queue.connects_to = { database: { writing: :queue } }
+  # Solid Queue shares the primary database (see config/database.yml), so no
+  # `connects_to` override — the default connection is the right one.
 
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.
   # config.action_mailer.raise_delivery_errors = false
 
-  # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "example.com" }
+  # Host used by links generated in mailer templates — password resets and
+  # dispute notices are useless if this is wrong. Override with APP_HOST on a
+  # preview deploy so its emails link back to the preview, not production.
+  config.action_mailer.default_url_options = {
+    host: ENV.fetch("APP_HOST", "weightags.com"),
+    protocol: "https"
+  }
 
   # Specify outgoing SMTP server. Remember to add smtp/* credentials via bin/rails credentials:edit.
   # config.action_mailer.smtp_settings = {
@@ -79,12 +85,19 @@ Rails.application.configure do
   # Only use :id for inspections in production.
   config.active_record.attributes_for_inspect = [ :id ]
 
-  # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  #
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  # DNS rebinding protection. APP_HOST is the canonical public host; the Railway
+  # entries cover the platform-assigned *.up.railway.app URL (useful before the
+  # custom domain resolves) and the internal hostname used for private
+  # networking. Add extra hosts with EXTRA_HOSTS (comma-separated).
+  config.hosts = [
+    ENV.fetch("APP_HOST", "weightags.com"),
+    "www.#{ENV.fetch("APP_HOST", "weightags.com")}",
+    /\A[a-z0-9-]+\.up\.railway\.app\z/,
+    /\A[a-z0-9-]+\.railway\.internal\z/,
+    *ENV.fetch("EXTRA_HOSTS", "").split(",").map(&:strip).reject(&:empty?)
+  ]
+
+  # The platform health check hits the container directly, without the public
+  # Host header — never let host authorization fail a deploy.
+  config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
 end

@@ -88,21 +88,19 @@ test:
 # Read https://guides.rubyonrails.org/configuring.html#configuring-a-database
 # for a full overview on how database connection configuration can be specified.
 #
+# Production runs on ONE managed Postgres database, supplied as DATABASE_URL by
+# the platform. Solid Queue / Cache / Cable share it (their tables live in the
+# primary schema — see db/migrate/20260729000001_create_solid_queue_cache_and_cable_tables.rb).
+#
+# This deliberately replaces an earlier four-database layout (primary + cache +
+# queue + cable). That layout could not bootstrap: it pointed each extra database
+# at a `migrations_paths` directory that does not exist, and because
+# `config.active_record.schema_format = :sql` the schema loader looked for
+# db/{cache,queue,cable}_structure.sql, which also do not exist. The solid_*
+# tables were therefore never created on a fresh production database. One
+# database, one schema_migrations table, one structure.sql.
 production:
-  primary: &primary_production
-    adapter: postgresql
-    encoding: unicode
-    url: <%= ENV["DATABASE_URL"] %>
-    max_connections: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>
-  cache:
-    <<: *primary_production
-    database: <%= ENV.fetch("WEIGHTAGS_DB_NAME", "weightags_production") %>_cache
-    migrations_paths: db/cache_migrate
-  queue:
-    <<: *primary_production
-    database: <%= ENV.fetch("WEIGHTAGS_DB_NAME", "weightags_production") %>_queue
-    migrations_paths: db/queue_migrate
-  cable:
-    <<: *primary_production
-    database: <%= ENV.fetch("WEIGHTAGS_DB_NAME", "weightags_production") %>_cable
-    migrations_paths: db/cable_migrate
+  adapter: postgresql
+  encoding: unicode
+  url: <%= ENV["DATABASE_URL"] %>
+  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS", 5) %>

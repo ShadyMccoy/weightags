@@ -11,6 +11,7 @@ development:
 test:
   <<: *default
 
+# No `database:` key — Solid Cache uses the primary connection (one managed
+# Postgres in production; see config/database.yml).
 production:
-  database: cache
   <<: *default
